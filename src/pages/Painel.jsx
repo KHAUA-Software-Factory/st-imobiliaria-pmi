@@ -24,14 +24,12 @@ const Painel = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
 
-    // --- ESTADOS DE INTERFACE ---
+    // --- ESTADOS ---
     const [menuAberto, setMenuAberto] = useState(true);
     const [loading, setLoading] = useState(true);
     const [exibirFormulario, setExibirFormulario] = useState(false);
     const [verCorretores, setVerCorretores] = useState(false);
     const [gerandoPDF, setGerandoPDF] = useState(false);
-
-    // --- ESTADOS DE DADOS ---
     const [analises, setAnalises] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
     const [analiseSelecionada, setAnaliseSelecionada] = useState(null);
@@ -43,8 +41,9 @@ const Painel = () => {
             return;
         }
 
-        const nivelUser = user.nivel || 'corretor';
-        const eAdmin = nivelUser === 'admin' || nivelUser === 'master';
+        // 1. Identifica o nível (Garante minúsculo para comparar)
+        const nivelLimpo = String(user.nivel || 'corretor').toLowerCase();
+        const eAdmin = nivelLimpo === 'admin' || nivelLimpo === 'master';
         setIsAdmin(eAdmin);
 
         const analisesRef = collection(db, "analises");
@@ -52,21 +51,33 @@ const Painel = () => {
 
         try {
             if (eAdmin) {
+                // Se for Master/Admin, traz tudo sem filtro
                 q = query(analisesRef, orderBy("data_criacao", "desc"));
             } else {
-                const emails = [user.emailGmail?.toLowerCase(), user.emailPDF?.toLowerCase()].filter(Boolean);
-                if (emails.length > 0) {
-                    q = query(analisesRef, where("id_corretor", "in", emails), orderBy("data_criacao", "desc"));
+                // 2. Filtro de Segurança para Corretor
+                // Pega os e-mails e remove duplicatas ou valores nulos
+                const listaEmails = [
+                    user.emailGmail?.toLowerCase(),
+                    user.emailPDF?.toLowerCase(),
+                    user.email?.toLowerCase() // Campo extra por segurança
+                ].filter((email, index, self) => email && self.indexOf(email) === index);
+
+                if (listaEmails.length > 0) {
+                    q = query(analisesRef, where("id_corretor", "in", listaEmails), orderBy("data_criacao", "desc"));
                 } else {
+                    // Caso o usuário não tenha e-mail nenhum no cadastro
                     setAnalises([]);
                     setLoading(false);
                     return;
                 }
             }
 
+            // 3. Escuta em Tempo Real
             const unsubscribe = onSnapshot(q, (snapshot) => {
                 const docs = [];
-                snapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
+                snapshot.forEach((doc) => {
+                    docs.push({ id: doc.id, ...doc.data() });
+                });
                 setAnalises(docs);
                 setLoading(false);
             }, (error) => {
@@ -76,7 +87,7 @@ const Painel = () => {
 
             return () => unsubscribe();
         } catch (err) {
-            console.error("Erro na Query:", err);
+            console.error("Erro na montagem da Query:", err);
             setLoading(false);
         }
     }, [user]);
@@ -90,7 +101,7 @@ const Painel = () => {
             await gerarPMI(analiseSelecionada, dadosCorretor, user.emailGmail, margem);
             setAnaliseSelecionada(null);
         } catch (err) {
-            alert(`Erro: ${err.message}`);
+            alert(`Erro PDF: ${err.message}`);
         } finally {
             setGerandoPDF(false);
         }
@@ -99,7 +110,7 @@ const Painel = () => {
     if (loading) return (
         <Container className="text-center mt-5 py-5">
             <Spinner animation="border" variant="primary" />
-            <p className="mt-3 text-muted fw-bold small">SINCRONIZANDO ST IMOBILIÁRIA...</p>
+            <p className="mt-3 text-muted fw-bold">CARREGANDO DADOS ST IMOBILIÁRIA...</p>
         </Container>
     );
 
@@ -116,11 +127,11 @@ const Painel = () => {
 
                     <div className="text-center mb-4 px-2">
                         <img src={user?.foto || 'https://via.placeholder.com/100'} alt="Perfil"
-                            className="rounded-circle mb-2 border border-2 border-primary shadow-sm"
+                            className="rounded-circle mb-2 border border-2 border-primary"
                             style={{ width: menuAberto ? '70px' : '40px', height: menuAberto ? '70px' : '40px', objectFit: 'cover' }} />
                         {menuAberto && (
-                            <div className="px-2">
-                                <h6 className="fw-bold mb-0 text-truncate">{user?.nome || 'Usuário'}</h6>
+                            <div className="animate__animated animate__fadeIn">
+                                <h6 className="fw-bold mb-0 text-truncate">{user?.nome || 'Corretor'}</h6>
                                 <small className="text-primary fw-bold text-uppercase" style={{ fontSize: '9px' }}>{user?.nivel || 'Corretor'}</small>
                             </div>
                         )}
@@ -132,19 +143,19 @@ const Painel = () => {
                         <Nav.Link className={`d-flex align-items-center p-2 rounded ${!verCorretores ? 'bg-primary text-white shadow' : 'text-dark'}`}
                             onClick={() => setVerCorretores(false)}>
                             <LayoutDashboard size={20} />
-                            {menuAberto && <span className="ms-2 fw-bold">DASHBOARD</span>}
+                            {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '13px'}}>Dashboard</span>}
                         </Nav.Link>
 
                         <Nav.Link className="d-flex align-items-center p-2 rounded text-dark" onClick={() => navigate('/pmi/novo-contrato')}>
                             <FilePlus size={20} />
-                            {menuAberto && <span className="ms-2 fw-bold">NOVO CONTRATO</span>}
+                            {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '13px'}}>Novo Contrato</span>}
                         </Nav.Link>
 
                         {isAdmin && (
                             <Nav.Link className={`d-flex align-items-center p-2 rounded ${verCorretores ? 'bg-primary text-white shadow' : 'text-dark'}`}
                                 onClick={() => setVerCorretores(true)}>
                                 <Users size={20} />
-                                {menuAberto && <span className="ms-2 fw-bold">MINHA EQUIPE</span>}
+                                {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '13px'}}>Equipe</span>}
                             </Nav.Link>
                         )}
                     </Nav>
@@ -154,7 +165,7 @@ const Painel = () => {
                     </div>
                 </Col>
 
-                {/* CONTEÚDO */}
+                {/* CONTEÚDO PRINCIPAL */}
                 <Col className="p-4 p-lg-5 overflow-auto">
                     {verCorretores && isAdmin ? (
                         <AdminCorretores aoVoltar={() => setVerCorretores(false)} />
@@ -169,9 +180,9 @@ const Painel = () => {
                             </div>
 
                             {exibirFormulario && (
-                                <div className="mb-5 bg-white p-4 rounded shadow border-start border-primary border-4">
+                                <div className="mb-5 bg-white p-4 rounded shadow border-start border-primary border-4 animate__animated animate__fadeInDown">
                                     <div className="d-flex justify-content-between align-items-center mb-4">
-                                        <h4 className="fw-bold m-0 text-dark">Inserir Nova Avaliação</h4>
+                                        <h4 className="fw-bold m-0">Inserir Nova Avaliação</h4>
                                         <Button variant="outline-secondary" size="sm" onClick={() => setExibirFormulario(false)}>Fechar</Button>
                                     </div>
                                     <FormularioAnalise user={user} dadosPreenchidos={dadosParaEditar} aoFinalizar={() => setExibirFormulario(false)} />
@@ -179,11 +190,19 @@ const Painel = () => {
                             )}
 
                             <Row className="g-4 pb-5">
+                                {analises.length === 0 && !exibirFormulario && (
+                                    <Col xs={12} className="text-center py-5">
+                                        <div className="text-muted">
+                                            <FileText size={48} className="mb-3 opacity-25" />
+                                            <p className="h5">Nenhuma análise encontrada para o seu usuário.</p>
+                                            <small>Certifique-se de que o campo "id_corretor" no banco bate com seu e-mail.</small>
+                                        </div>
+                                    </Col>
+                                )}
+
                                 {analises.map(item => (
                                     <Col key={item.id} xs={12} md={6} lg={4} xxl={3}>
-                                        <div className="h-100 shadow-sm rounded border bg-white p-1">
-                                            <CardAnalise item={item} onGerir={(analise) => setAnaliseSelecionada(analise)} />
-                                        </div>
+                                        <CardAnalise item={item} onGerir={(analise) => setAnaliseSelecionada(analise)} />
                                     </Col>
                                 ))}
                             </Row>
@@ -192,7 +211,6 @@ const Painel = () => {
                 </Col>
             </Row>
 
-            {/* MODAL GESTÃO (UNIFICADO) */}
             <ModalGestao
                 show={!!analiseSelecionada}
                 onHide={() => setAnaliseSelecionada(null)}
@@ -204,18 +222,17 @@ const Painel = () => {
                 }}
                 onGerarPdf={(margem) => handleConfirmarPDF(margem)}
                 onDelete={() => {
-                    if (window.confirm("Confirmar exclusão desta análise?")) {
+                    if (window.confirm("Confirmar exclusão?")) {
                         deleteDoc(doc(db, "analises", analiseSelecionada.id));
                         setAnaliseSelecionada(null);
                     }
                 }}
             />
 
-            {/* LOADING OVERLAY */}
             {gerandoPDF && (
                 <div className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-75" style={{ zIndex: 9999 }}>
                     <Spinner animation="grow" variant="primary" />
-                    <h5 className="mt-3 fw-bold text-primary">GERANDO RELATÓRIO...</h5>
+                    <h5 className="mt-3 fw-bold text-primary">GERANDO PDF...</h5>
                 </div>
             )}
         </Container>
