@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner, Modal } from 'react-bootstrap';
 import { PlusCircle, Users } from 'lucide-react';
 
+// CONTEXTO
+import { useAuth } from '../context/AuthContext';
+
 // COMPONENTES MODULARIZADOS
 import FormularioAnalise from '../components/FormularioAnalise';
 import BotaoLogout from '../components/BotaoLogout';
@@ -10,12 +13,15 @@ import ModalGestao from '../components/ModalGestao';
 import AdminCorretores from './AdminCorretores';
 
 // SERVIÇOS
-import { db, auth } from '../services/firebase';
+import { db } from '../services/firebase';
 import { gerarPMI } from '../services/pdf/pdfService';
 import { obterDadosCorretor } from '../services/userService';
 import { collection, query, onSnapshot, orderBy, doc, deleteDoc, where } from 'firebase/firestore';
 
-const Home = ({ user }) => {
+const Painel = () => {
+    // --- CONSUMINDO O CONTEXTO ---
+    const { user } = useAuth();
+
     // --- ESTADOS DE DADOS ---
     const [analises, setAnalises] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -29,92 +35,71 @@ const Home = ({ user }) => {
     const [dadosParaEditar, setDadosParaEditar] = useState(null);
     const [gerandoPDF, setGerandoPDF] = useState(false);
 
-    // --- EFEITO: PERMISSÕES E DADOS EM TEMPO REAL ---
+    // --- EFEITO: DADOS EM TEMPO REAL ---
     useEffect(() => {
+        if (!user) return;
+
         let unsubscribeAnalises;
 
-        const inicializarPainel = async () => {
-            const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
+        const carregarDados = () => {
+            try {
+                // Definimos se é admin baseado nos dados que já estão no contexto
+                const eAdmin = user.nivel === 'admin' || user.nivel === 'master';
+                setIsAdmin(eAdmin);
 
-            if (emailGmail) {
-                try {
-                    const dadosPerfil = await obterDadosCorretor(emailGmail);
+                const analisesRef = collection(db, "analises");
+                let q;
 
-                    // --- PROTEÇÃO: Se o perfil não existir, não tentamos fazer a query ---
-                    if (!dadosPerfil) {
-                        console.warn("Perfil não localizado para:", emailGmail);
-                        setLoading(false);
-                        return;
-                    }
+                if (eAdmin) {
+                    q = query(analisesRef, orderBy("data_criacao", "desc"));
+                } else {
+                    const emailGmail = user.emailGmail?.toLowerCase();
+                    const emailST = user.emailPDF?.toLowerCase();
 
-                    const eAdmin = dadosPerfil.nivel === 'admin' || dadosPerfil.nivel === 'master';
-                    setIsAdmin(eAdmin);
-
-                    const analisesRef = collection(db, "analises");
-                    let q;
-
-                    if (eAdmin) {
-                        // Admin continua vendo absolutamente tudo
-                        q = query(analisesRef, orderBy("data_criacao", "desc"));
-                    } else {
-                        const emailGmail = dadosPerfil.emailGmail?.toLowerCase();
-                        const emailST = dadosPerfil.emailPDF?.toLowerCase();
-
-                        // FILTRO HÍBRIDO: Busca pelos dois e-mails ao mesmo tempo
-                        q = query(
-                            analisesRef,
-                            where("id_corretor", "in", [emailGmail, emailST].filter(Boolean)),
-                            orderBy("data_criacao", "desc")
-                        );
-                    }
-                    unsubscribeAnalises = onSnapshot(q, (querySnapshot) => {
-                        const docs = [];
-                        querySnapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
-                        setAnalises(docs);
-                        setLoading(false);
-                    }, (error) => {
-                        // SE O ERRO DE ÍNDICE ACONTECER, ELE VAI APARECER AQUI
-                        console.error("Erro no Snapshot:", error);
-                        setLoading(false);
-                    });
-
-                } catch (e) {
-                    console.error("Erro ao inicializar:", e);
-                    setLoading(false);
+                    // Busca análises vinculadas a qualquer um dos e-mails do corretor
+                    q = query(
+                        analisesRef,
+                        where("id_corretor", "in", [emailGmail, emailST].filter(Boolean)),
+                        orderBy("data_criacao", "desc")
+                    );
                 }
+
+                unsubscribeAnalises = onSnapshot(q, (querySnapshot) => {
+                    const docs = [];
+                    querySnapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
+                    setAnalises(docs);
+                    setLoading(false);
+                }, (error) => {
+                    console.error("Erro no Snapshot:", error);
+                    setLoading(false);
+                });
+
+            } catch (e) {
+                console.error("Erro ao carregar dados:", e);
+                setLoading(false);
             }
         };
 
-        inicializarPainel();
+        carregarDados();
         return () => unsubscribeAnalises && unsubscribeAnalises();
     }, [user]);
-    // --- LÓGICA DE GERAÇÃO DO PDF (CORRIGIDA) ---
+
+    // --- LÓGICA DE GERAÇÃO DO PDF ---
     const handleConfirmarPDF = async (margem) => {
         setExibirOpcoesPDF(false);
         setGerandoPDF(true);
         try {
-            // 1. Identifica os e-mails
             const emailDonoAnalise = analiseSelecionada.id_corretor?.toLowerCase();
-            const emailLogadoGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
+            
+            // Busca dados atualizados do dono da análise (Foto, CRECI, Nome)
+            let dadosCorretorParaPDF = await obterDadosCorretor(emailDonoAnalise);
 
-            // 2. Tenta buscar os dados do dono da análise
-            let dadosCorretor = await obterDadosCorretor(emailDonoAnalise);
-
-            // 3. A CHAVE DO PROBLEMA: Se não achou pelo e-mail da análise, 
-            // busca pelo e-mail logado (Gmail), que é onde estão os dados reais no seu Firestore
-            if (!dadosCorretor && emailLogadoGmail) {
-                console.log("Dados não encontrados pelo ID da análise, buscando pelo Gmail logado...");
-                dadosCorretor = await obterDadosCorretor(emailLogadoGmail);
+            // Fallback: Se não achar pelo email da análise, usa os dados do usuário logado
+            if (!dadosCorretorParaPDF) {
+                dadosCorretorParaPDF = user;
             }
 
-            if (!dadosCorretor) {
-                throw new Error("Não encontramos seu perfil de corretor. Verifique o cadastro na aba EQUIPE.");
-            }
-
-            // 4. Gera o PDF passando os dados encontrados
-            // Passamos o emailLogadoGmail como fallback para o texto do PDF
-            await gerarPMI(analiseSelecionada, dadosCorretor, emailLogadoGmail, margem);
-
+            await gerarPMI(analiseSelecionada, dadosCorretorParaPDF, user.emailGmail, margem);
             setAnaliseSelecionada(null);
         } catch (err) {
             alert(`Erro ao gerar o PDF: ${err.message}`);
@@ -125,11 +110,10 @@ const Home = ({ user }) => {
     };
 
     // --- RENDERIZAÇÃO ---
-
     if (loading) return (
         <Container className="text-center mt-5">
             <Spinner animation="border" variant="primary" />
-            <p className="mt-2 text-muted fw-bold text-uppercase">Carregando Painel ST...</p>
+            <p className="mt-2 text-muted fw-bold text-uppercase">Sincronizando com ST Imobiliária...</p>
         </Container>
     );
 
@@ -143,7 +127,7 @@ const Home = ({ user }) => {
             <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-white shadow-sm rounded border-start border-primary border-4">
                 <div>
                     <h5 className="mb-0 fw-bold" style={{ color: "#052739" }}>ST Imobiliária | Gestão PMI</h5>
-                    <small className="text-muted">Olá, {user?.nome || 'Corretor'}</small>
+                    <small className="text-muted">Bem-vindo, <strong>{user?.nome || 'Corretor'}</strong></small>
                 </div>
                 <div className="d-flex align-items-center">
                     {isAdmin && (
@@ -188,7 +172,7 @@ const Home = ({ user }) => {
             <Row>
                 {analises.length === 0 && !exibirFormulario && (
                     <Col className="text-center py-5">
-                        <p className="text-muted italic">Nenhuma análise cadastrada em Itupeva ainda.</p>
+                        <p className="text-muted italic">Nenhuma análise encontrada em sua carteira.</p>
                     </Col>
                 )}
                 {analises.map(item => (
@@ -200,7 +184,7 @@ const Home = ({ user }) => {
                 ))}
             </Row>
 
-            {/* MODAL DE GESTÃO */}
+            {/* MODAL DE GESTÃO E PDF (Mantenha igual ao seu código original) */}
             <ModalGestao
                 show={!!analiseSelecionada && !exibirOpcoesPDF}
                 onHide={() => setAnaliseSelecionada(null)}
@@ -212,14 +196,13 @@ const Home = ({ user }) => {
                 }}
                 onOpenPdfOptions={() => setExibirOpcoesPDF(true)}
                 onDelete={() => {
-                    if (window.confirm("Deseja excluir permanentemente este registro da ST Imobiliária?")) {
+                    if (window.confirm("Deseja excluir permanentemente este registro?")) {
                         deleteDoc(doc(db, "analises", analiseSelecionada.id));
                         setAnaliseSelecionada(null);
                     }
                 }}
             />
 
-            {/* MODAL DE MARGEM PDF */}
             <Modal show={exibirOpcoesPDF} onHide={() => setExibirOpcoesPDF(false)} centered size="sm">
                 <Modal.Header closeButton className="bg-dark text-white">
                     <Modal.Title className="fs-6 fw-bold text-uppercase">Margem Estratégica</Modal.Title>
@@ -234,15 +217,14 @@ const Home = ({ user }) => {
                 </Modal.Body>
             </Modal>
 
-            {/* OVERLAY DE CARREGAMENTO PDF */}
             {gerandoPDF && (
                 <div className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-75" style={{ zIndex: 9999 }}>
                     <Spinner animation="grow" variant="primary" />
-                    <h5 className="mt-3 fw-bold text-primary animate-pulse">Gerando PMI Profissional...</h5>
+                    <h5 className="mt-3 fw-bold text-primary">Gerando Relatório Profissional...</h5>
                 </div>
             )}
         </Container>
     );
 };
 
-export default Home;
+export default Painel;

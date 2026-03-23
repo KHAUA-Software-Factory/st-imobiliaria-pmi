@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { auth, db } from '../services/firebase'; // Verifique se o caminho está correto
+import { auth, db } from '../services/firebase'; 
 import { signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { Container, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { ShieldCheck } from 'lucide-react'; 
+import { useNavigate } from 'react-router-dom'; // IMPORTANTE: Para redirecionar
 
-const Login = ({ onLogin }) => {
+const Login = () => { // Removemos a prop onLogin daqui
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate(); // Hook para mudar de página
 
   // Cores Oficiais ST
   const azulST = "#052739";
@@ -20,20 +22,25 @@ const Login = ({ onLogin }) => {
 
     try {
       const result = await signInWithPopup(auth, provider);
-      const email = result.user.email;
+      const email = result.user.email.toLowerCase(); // Garantir que busca em minúsculo
 
-      // Verifica se o e-mail está na coleção de corretores autorizados
+      // 1. Verifica se o e-mail está na coleção de corretores autorizados
       const userDoc = await getDoc(doc(db, "usuarios", email));
       
       if (userDoc.exists()) {
-        const dados = userDoc.data();
-        onLogin(dados); 
+        // 2. Se existe, o AuthContext vai detectar a mudança de estado automaticamente.
+        // Só precisamos mandar o corretor para a rota do Painel.
+        navigate('/pmi'); 
       } else {
         setError(`Acesso negado: o e-mail ${email} não possui autorização no sistema ST.`);
-        await signOut(auth);
+        await signOut(auth); // Desloga para não deixar a sessão "suja"
       }
     } catch (err) {
-      setError("Falha na autenticação. Verifique sua conexão.");
+      if (err.code === 'auth/unauthorized-domain') {
+        setError("Erro: Este endereço IP/Domínio não está autorizado no console do Firebase.");
+      } else {
+        setError("Falha na autenticação. Verifique sua conexão.");
+      }
       console.error(err);
     } finally {
       setLoading(false);
@@ -44,13 +51,12 @@ const Login = ({ onLogin }) => {
     <Container fluid className="d-flex align-items-center justify-content-center" 
       style={{ 
         minHeight: "100vh", 
-        backgroundColor: azulST, // Fundo Azul Noturno
+        backgroundColor: azulST,
         backgroundImage: "radial-gradient(circle, #0a3a54 0%, #052739 100%)" 
       }}>
       
       <Card style={{ width: '100%', maxWidth: '400px' }} className="shadow-lg border-0 text-center p-2">
         <Card.Body className="p-5">
-          {/* Logo ou Título */}
           <h1 className="fw-bold mb-1" style={{ color: azulST }}>ST</h1>
           <h4 className="fw-bold mb-2" style={{ color: azulST }}>IMOBILIÁRIA</h4>
           <p className="text-muted small mb-4">Pesquisa de Mercado Imobiliário (PMI)</p>
@@ -58,7 +64,7 @@ const Login = ({ onLogin }) => {
           <hr className="my-4" style={{ opacity: 0.1 }} />
 
           {error && (
-            <Alert variant="danger" className="py-2 small border-0 shadow-sm mb-4">
+            <Alert variant="danger" className="py-2 small border-0 shadow-sm mb-4 text-start">
               {error}
             </Alert>
           )}
@@ -68,8 +74,7 @@ const Login = ({ onLogin }) => {
             className="w-100 d-flex align-items-center justify-content-center gap-3 p-3 shadow-sm border"
             style={{ 
                 borderRadius: '10px', 
-                fontWeight: '600',
-                transition: 'all 0.3s ease' 
+                fontWeight: '600'
             }}
             onClick={handleGoogleLogin}
             disabled={loading}

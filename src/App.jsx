@@ -1,44 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
-import { auth, db } from './services/firebase'; // Certifique-se de que o caminho está correto
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
+// 1. IMPORTANTE: Importe o PROVIDER (que abraça o app) 
+// e o HOOK (que busca os dados). Verifique os caminhos!
+import { AuthProvider, useAuth } from './context/AuthContext';
+// COMPONENTES
 import Login from './components/Login';
-import Home from './pages/Home';
+import Painel from './pages/Painel';
+import Institucional from './pages/Institucional';
+
+// Componente de Proteção
+const RotaPrivada = ({ children }) => {
+    const { user, loading } = useAuth();
+    
+    if (loading) return <div className="p-5 text-center fw-bold">Carregando ST Imobiliária...</div>;
+    
+    // Se não tiver usuário, manda para o login do PMI
+    return user ? children : <Navigate to="/pmi/login" />;
+};
 
 function App() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+    return (
+        /* 2. MUDANÇA AQUI: Use AuthProvider em vez de AuthContext */
+        <AuthProvider> 
+            <Router>
+                <Routes>
+                    {/* Site institucional na raiz */}
+                    <Route path="/" element={<Institucional />} />
+                    
+                    {/* Login do sistema */}
+                    <Route path="/pmi/login" element={<Login />} />
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      try {
-        if (fbUser) {
-          const docRef = doc(db, "usuarios", fbUser.email);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            setUser(docSnap.data());
-          } else {
-            console.error("Usuário não cadastrado no Firestore");
-          }
-        } else {
-          setUser(null);
-        }
-      } catch (err) {
-        console.error("Erro na autenticação:", err);
-      }
-      setLoading(false);
-    });
-    return () => unsubscribe();
-  }, []);
+                    {/* Painel protegido */}
+                    <Route 
+                        path="/pmi" 
+                        element={
+                            <RotaPrivada>
+                                <Painel />
+                            </RotaPrivada>
+                        } 
+                    />
 
-  if (loading) return <div className="p-5 text-center">Carregando ST Imobiliária...</div>;
-
-  return (
-    <div className="App">
-      {!user ? <Login onLogin={setUser} /> : <Home user={user} />}
-    </div>
-  );
+                    {/* Redirecionamento de segurança */}
+                    <Route path="*" element={<Navigate to="/" />} />
+                </Routes>
+            </Router>
+        </AuthProvider>
+    );
 }
 
 export default App;
