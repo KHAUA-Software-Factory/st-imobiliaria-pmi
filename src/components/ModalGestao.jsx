@@ -146,7 +146,7 @@ const ModalGestao = ({
             
             <Modal.Footer className="bg-white border-0 justify-content-center pb-4">
                 <small className="text-muted italic">
-                    * Cálculos baseados em {analise?.comparativos?.length || 0} imóveis comparativos em Itupeva.
+                    * Cálculos baseados em {analise?.comparativos?.length || 0} imóveis comparativos.
                 </small>
             </Modal.Footer>
         </Modal>
