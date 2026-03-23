@@ -5,6 +5,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { Container, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { ShieldCheck } from 'lucide-react'; 
 import { useNavigate } from 'react-router-dom'; // IMPORTANTE: Para redirecionar
+import logoST from '../assets/logo_st_2.png'; // Importe o logo da ST Imobiliária
 
 const Login = () => { // Removemos a prop onLogin daqui
   const [error, setError] = useState('');
@@ -57,8 +58,19 @@ const Login = () => { // Removemos a prop onLogin daqui
       
       <Card style={{ width: '100%', maxWidth: '400px' }} className="shadow-lg border-0 text-center p-2">
         <Card.Body className="p-5">
-          <h1 className="fw-bold mb-1" style={{ color: azulST }}>ST</h1>
-          <h4 className="fw-bold mb-2" style={{ color: azulST }}>IMOBILIÁRIA</h4>
+{/* LOGO DA ST IMOBILIÁRIA */}
+<div className="mb-3">
+    <img 
+        src={logoST} 
+        alt="ST Imobiliária" 
+        style={{ 
+            width: '180px', // Ajuste o tamanho conforme preferir
+            height: 'auto', 
+            objectFit: 'contain' 
+        }} 
+        className="img-fluid"
+    />
+</div>
           <p className="text-muted small mb-4">Pesquisa de Mercado Imobiliário (PMI)</p>
           
           <hr className="my-4" style={{ opacity: 0.1 }} />
