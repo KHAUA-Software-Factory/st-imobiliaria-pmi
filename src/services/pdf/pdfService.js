@@ -10,8 +10,15 @@ export const gerarPMI = async (item, dadosCorretor, emailCorretor, margem = 0) =
 
         // --- CÁLCULOS ---
         const areaAlvo = item.dados_alvo?.atributos?.area_construida || 0;
-        const comparativos = item.comparativos || [];
+        const comparativos = (item.comparativos || []).map((comp) => ({
+            ...comp,
+            valor_venda:
+                typeof comp.valor_venda === 'string'
+                    ? Number(comp.valor_venda || 0) / 100
+                    : Number(comp.valor_venda || 0)
+        }));
 
+        
         // Mantemos o m² com decimais para precisão do cálculo interno
         const somaM2 = comparativos.reduce((acc, c) => acc + ((c.valor_venda || 0) / (c.area_construida || 1)), 0);
         const mediaM2 = somaM2 / (comparativos.length || 1);
@@ -122,7 +129,7 @@ export const gerarPMI = async (item, dadosCorretor, emailCorretor, margem = 0) =
                 ['Área Construída', `${areaAlvo} m²`],
                 ['Dormitórios', `${item.dados_alvo?.atributos?.dormitorios || 0}`],
                 ['Suítes', `${item.dados_alvo?.atributos?.suites || 0}`],
-                ['Salas', `${item.dados_alvo?.atributos?.salas || 0}`],
+                // ['Salas', `${item.dados_alvo?.atributos?.salas || 0}`],
                 ['Vagas', `${item.dados_alvo?.atributos?.vagas || 0}`],
                 ['Piscina', item.dados_alvo?.atributos?.has_piscina ? 'Sim' : 'Não'],
                 ['Área Gourmet', item.dados_alvo?.atributos?.has_area_gourmet ? 'Sim' : 'Não']

@@ -15,19 +15,19 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
     const [carregando, setCarregando] = useState(false);
 
     // ESTADO INICIAL DO IMÓVEL ALVO
-// No estado inicial do dadosAlvo
-const [dadosAlvo, setDadosAlvo] = useState({
-    cliente: '',
-    descricao: '',
-    endereco: { logradouro: '', bairro: '', cidade: 'Itupeva', estado: 'SP', cep: '', numero: '' },
-    atributos: {
-        area_total: 0,        // NOVO CAMPO
-        area_construida: 0,   // ESPECIFICADO COMO CONSTRUÍDA
-        suites: 0, vagas: 0, dormitorios: 0, salas: 0,
-        has_piscina: false, has_area_gourmet: false
-    },
-    fotos: ["", "", "", ""]
-});
+    // No estado inicial do dadosAlvo
+    const [dadosAlvo, setDadosAlvo] = useState({
+        cliente: '',
+        descricao: '',
+        endereco: { logradouro: '', bairro: '', cidade: 'Itupeva', estado: 'SP', cep: '', numero: '' },
+        atributos: {
+            area_total: 0,        // NOVO CAMPO
+            area_construida: 0,   // ESPECIFICADO COMO CONSTRUÍDA
+            suites: 0, vagas: 0, dormitorios: 0, salas: 0,
+            has_piscina: false, has_area_gourmet: false
+        },
+        fotos: ["", "", "", ""]
+    });
 
     const [comparativos, setComparativos] = useState([]);
 
@@ -48,13 +48,13 @@ const [dadosAlvo, setDadosAlvo] = useState({
                 if (!data.erro) {
                     setDadosAlvo(prev => ({
                         ...prev,
-                        endereco: { 
-                            ...prev.endereco, 
-                            cep: valor, 
-                            logradouro: data.logradouro, 
-                            bairro: data.bairro, 
-                            cidade: data.localidade, 
-                            estado: data.uf 
+                        endereco: {
+                            ...prev.endereco,
+                            cep: valor,
+                            logradouro: data.logradouro,
+                            bairro: data.bairro,
+                            cidade: data.localidade,
+                            estado: data.uf
                         }
                     }));
                 }
@@ -101,133 +101,134 @@ const [dadosAlvo, setDadosAlvo] = useState({
     };
 
     // --- VALIDAÇÕES OBRIGATÓRIAS ETAPA 1 ---
-// --- VALIDAÇÕES OBRIGATÓRIAS ETAPA 1 ---
-const validarEtapa1 = () => {
-    const { cliente, descricao, endereco, atributos } = dadosAlvo;
+    // --- VALIDAÇÕES OBRIGATÓRIAS ETAPA 1 ---
+    const validarEtapa1 = () => {
+        const { cliente, descricao, endereco, atributos } = dadosAlvo;
 
-    // 1. Validação de Dados do Cliente e Narrativa
-    if (!cliente.trim()) return "O nome do cliente é obrigatório.";
-    if (!descricao.trim()) return "A descrição narrativa (texto do PDF) é obrigatória.";
+        // 1. Validação de Dados do Cliente e Narrativa
+        if (!cliente.trim()) return "O nome do cliente é obrigatório.";
+        if (!descricao.trim()) return "A descrição narrativa (texto do PDF) é obrigatória.";
 
-    // 2. Validação de Endereço (Essencial para localização e CEP)
-    if (!endereco.cep.trim()) return "O CEP é obrigatório.";
-    if (!endereco.logradouro.trim()) return "O logradouro (rua) é obrigatório.";
-    if (!endereco.bairro.trim()) return "O bairro é obrigatório.";
-    if (!endereco.numero.trim()) return "O número do imóvel é obrigatório.";
-    if (!endereco.cidade.trim()) return "A cidade é obrigatória.";
+        // 2. Validação de Endereço (Essencial para localização e CEP)
+        if (!endereco.cep.trim()) return "O CEP é obrigatório.";
+        if (!endereco.logradouro.trim()) return "O logradouro (rua) é obrigatório.";
+        if (!endereco.bairro.trim()) return "O bairro é obrigatório.";
+        if (!endereco.numero.trim()) return "O número do imóvel é obrigatório.";
+        if (!endereco.cidade.trim()) return "A cidade é obrigatória.";
 
-    // 3. Validação de Áreas (Especificando Construída vs Total)
-    if (!atributos.area_total || atributos.area_total <= 0) {
-        return "Informe a Área Total do Terreno (m²).";
-    }
-    if (!atributos.area_construida || atributos.area_construida <= 0) {
-        return "Informe a Área Construída do imóvel (m²).";
-    }
-
-    // 4. Atributos de Composição (Obrigatórios >= 0)
-    // Usamos verificação de undefined/null para permitir que o valor seja 0 (ex: zero suítes)
-    if (atributos.dormitorios === undefined || atributos.dormitorios === null || atributos.dormitorios < 0) {
-        return "Informe a quantidade de dormitórios.";
-    }
-    if (atributos.vagas === undefined || atributos.vagas === null || atributos.vagas < 0) {
-        return "Informe a quantidade de vagas de garagem.";
-    }
-    if (atributos.suites === undefined || atributos.suites === null || atributos.suites < 0) {
-        return "Informe a quantidade de suítes.";
-    }
-
-    // 5. Validação de Mídia
-    // Garante que pelo menos a primeira foto (capa do PDF) foi carregada
-    if (!dadosAlvo.fotos[0] || dadosAlvo.fotos[0] === "") {
-        return "A foto principal do imóvel alvo é obrigatória para a capa do PDF.";
-    }
-
-    // Se passou por tudo, retorna null (sem erros)
-    return null;
-};
-
- const handleSalvarFinal = async () => {
-    // 1. Validação de Quantidade (Regra de Negócio ST Imobiliária)
-    const qtd = comparativos.length;
-    if (qtd !== 3 && qtd !== 5) {
-        return alert(`Regra ST Imobiliária: O PMI deve conter exatamente 3 ou 5 comparativos. (Atual: ${qtd})`);
-    }
-
-    // 2. Validação Rigorosa de cada Comparativo
-    for (let i = 0; i < comparativos.length; i++) {
-        const comp = comparativos[i];
-        const n = i + 1; // Número para identificar o card no alerta
-
-        // Campos de texto e links
-        if (!comp.bairro?.trim()) return alert(`Comparativo ${n}: O bairro é obrigatório.`);
-        if (!comp.link_anuncio?.trim()) return alert(`Comparativo ${n}: O link do anúncio é obrigatório para conferência.`);
-        
-        // Áreas (Diferenciando Total de Construída)
-        if (!comp.area_total || comp.area_total <= 0) {
-            return alert(`Comparativo ${n}: Informe a Área Total do Terreno (m²).`);
+        // 3. Validação de Áreas (Especificando Construída vs Total)
+        if (!atributos.area_total || atributos.area_total <= 0) {
+            return "Informe a Área Total do Terreno (m²).";
         }
-        if (!comp.area_construida || comp.area_construida <= 0) {
-            return alert(`Comparativo ${n}: Informe a Área Construída (m²).`);
+        if (!atributos.area_construida || atributos.area_construida <= 0) {
+            return "Informe a Área Construída do imóvel (m²).";
         }
 
-        // Valores e Atributos
-        if (!comp.valor_venda || comp.valor_venda <= 0) {
-            return alert(`Comparativo ${n}: O valor de venda é obrigatório.`);
+        // 4. Atributos de Composição (Obrigatórios >= 0)
+        // Usamos verificação de undefined/null para permitir que o valor seja 0 (ex: zero suítes)
+        if (atributos.dormitorios === undefined || atributos.dormitorios === null || atributos.dormitorios < 0) {
+            return "Informe a quantidade de dormitórios.";
         }
-        if (comp.dormitorios === undefined || comp.dormitorios === null || comp.dormitorios < 0) {
-            return alert(`Comparativo ${n}: Informe a quantidade de dormitórios.`);
+        if (atributos.vagas === undefined || atributos.vagas === null || atributos.vagas < 0) {
+            return "Informe a quantidade de vagas de garagem.";
+        }
+        if (atributos.suites === undefined || atributos.suites === null || atributos.suites < 0) {
+            return "Informe a quantidade de suítes.";
         }
 
-        // Foto Obrigatória
-        if (!comp.fotos[0] || comp.fotos[0] === "") {
-            return alert(`Comparativo ${n}: A foto principal é obrigatória para o relatório.`);
+        // 5. Validação de Mídia
+        // Garante que pelo menos a primeira foto (capa do PDF) foi carregada
+        if (!dadosAlvo.fotos[0] || dadosAlvo.fotos[0] === "") {
+            return "A foto principal do imóvel alvo é obrigatória para a capa do PDF.";
         }
-    }
 
-    // 3. Início do Processo de Salvamento
-    setCarregando(true);
+        // Se passou por tudo, retorna null (sem erros)
+        return null;
+    };
 
-    try {
-        // Identificação do Corretor (Ponte Gmail -> ST Imobiliária)
-        const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
-        const perfil = await obterDadosCorretor(emailGmail);
-        
-        // Se houver emailPDF cadastrado, usamos ele, senão usamos o Gmail logado
-        const emailReal = perfil?.emailPDF?.toLowerCase() || emailGmail;
+    const handleSalvarFinal = async () => {
+        // 1. Validação de Quantidade (Regra de Negócio ST Imobiliária)
+        const qtd = comparativos.length;
+        if (qtd !== 3 && qtd !== 5) {
+            return alert(`Regra ST Imobiliária: O PMI deve conter exatamente 3 ou 5 comparativos. (Atual: ${qtd})`);
+        }
 
-        if (!emailReal) {
+        // 2. Validação Rigorosa de cada Comparativo
+        for (let i = 0; i < comparativos.length; i++) {
+            const comp = comparativos[i];
+            const n = i + 1; // Número para identificar o card no alerta
+
+            // Campos de texto e links
+            if (!comp.bairro?.trim()) return alert(`Comparativo ${n}: O bairro é obrigatório.`);
+            if (!comp.link_anuncio?.trim()) return alert(`Comparativo ${n}: O link do anúncio é obrigatório para conferência.`);
+
+            // Áreas (Diferenciando Total de Construída)
+            if (!comp.area_total || comp.area_total <= 0) {
+                return alert(`Comparativo ${n}: Informe a Área Total do Terreno (m²).`);
+            }
+            if (!comp.area_construida || comp.area_construida <= 0) {
+                return alert(`Comparativo ${n}: Informe a Área Construída (m²).`);
+            }
+
+            // Valores e Atributos
+            if (!comp.valor_venda || comp.valor_venda <= 0) {
+                return alert(`Comparativo ${n}: O valor de venda é obrigatório.`);
+            }
+            if (comp.dormitorios === undefined || comp.dormitorios === null || comp.dormitorios < 0) {
+                return alert(`Comparativo ${n}: Informe a quantidade de dormitórios.`);
+            }
+
+            // Foto Obrigatória
+            if (!comp.fotos[0] || comp.fotos[0] === "") {
+                return alert(`Comparativo ${n}: A foto principal é obrigatória para o relatório.`);
+            }
+        }
+
+        // 3. Início do Processo de Salvamento
+        setCarregando(true);
+
+        try {
+            // Identificação do Corretor (Ponte Gmail -> ST Imobiliária)
+            const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
+            const perfil = await obterDadosCorretor(emailGmail);
+
+            if (!emailGmail) {
+                setCarregando(false);
+                return alert("Erro crítico: Não foi possível identificar o corretor.");
+            }
+
+            const payload = {
+                id_corretor: emailGmail,
+                email_pdf: perfil?.emailPDF?.toLowerCase() || '',
+                ultima_atualizacao: serverTimestamp(),
+                dados_alvo: dadosAlvo,
+                comparativos: comparativos.map((comp) => ({
+                    ...comp,
+                    valor_venda: Number(comp.valor_venda || 0) / 100
+                })),
+                status: 'concluido'
+            };
+
+            // 4. Gravação no Firestore (Update ou Create)
+            if (dadosPreenchidos?.id) {
+                // Se já existe um ID, estamos editando
+                await updateDoc(doc(db, "analises", dadosPreenchidos.id), payload);
+            } else {
+                // Se não existe ID, é uma nova análise
+                payload.data_criacao = serverTimestamp();
+                await addDoc(collection(db, "analises"), payload);
+            }
+
+            alert("Análise salva com sucesso na ST Imobiliária!");
+            aoFinalizar(); // Volta para a Home
+
+        } catch (e) {
+            alert("Erro técnico ao salvar no banco de dados.");
+            console.error("Erro no salvamento:", e);
+        } finally {
             setCarregando(false);
-            return alert("Erro crítico: Não foi possível identificar o corretor para salvar a análise.");
         }
-
-        const payload = { 
-            id_corretor: emailReal, 
-            ultima_atualizacao: serverTimestamp(), 
-            dados_alvo: dadosAlvo, 
-            comparativos, 
-            status: 'concluido' 
-        };
-
-        // 4. Gravação no Firestore (Update ou Create)
-        if (dadosPreenchidos?.id) {
-            // Se já existe um ID, estamos editando
-            await updateDoc(doc(db, "analises", dadosPreenchidos.id), payload);
-        } else {
-            // Se não existe ID, é uma nova análise
-            payload.data_criacao = serverTimestamp();
-            await addDoc(collection(db, "analises"), payload);
-        }
-
-        alert("Análise salva com sucesso na ST Imobiliária!"); 
-        aoFinalizar(); // Volta para a Home
-        
-    } catch (e) { 
-        alert("Erro técnico ao salvar no banco de dados."); 
-        console.error("Erro no salvamento:", e);
-    } finally { 
-        setCarregando(false); 
-    }
-};
+    };
 
     return (
         <Container className="mt-2 pb-5">
@@ -248,15 +249,15 @@ const validarEtapa1 = () => {
 
             {etapa === 1 ? (
                 <>
-                    <EtapaAlvo 
-                        dadosAlvo={dadosAlvo} 
-                        setDadosAlvo={setDadosAlvo} 
-                        handleFotoAlvo={handleFotoAlvo} 
+                    <EtapaAlvo
+                        dadosAlvo={dadosAlvo}
+                        setDadosAlvo={setDadosAlvo}
+                        handleFotoAlvo={handleFotoAlvo}
                         buscarCEP={buscarCEP}
                     />
                     <Button variant="primary" className="w-100 py-3 fw-bold shadow-sm" onClick={() => {
                         const erro = validarEtapa1();
-                        if (erro) alert(erro); else { setEtapa(2); window.scrollTo(0,0); }
+                        if (erro) alert(erro); else { setEtapa(2); window.scrollTo(0, 0); }
                     }}>
                         AVANÇAR PARA COMPARATIVOS
                     </Button>
@@ -264,15 +265,15 @@ const validarEtapa1 = () => {
             ) : (
                 <>
                     <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded border">
-                        <Button 
-                            variant="primary" 
-                            size="sm" 
-                            onClick={() => setComparativos([...comparativos, { 
-                                bairro: '', valor_venda: 0, area_construida: 0, 
-                                suites: 0, vagas: 0, salas: 0, dormitorios: 0, 
-                                has_piscina: false, has_area_gourmet: false, 
-                                fotos: ["", "", "", ""], link_anuncio: '' 
-                            }])} 
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => setComparativos([...comparativos, {
+                                bairro: '', valor_venda: 0, area_construida: 0,
+                                suites: 0, vagas: 0, salas: 0, dormitorios: 0,
+                                has_piscina: false, has_area_gourmet: false,
+                                fotos: ["", "", "", ""], link_anuncio: ''
+                            }])}
                             disabled={comparativos.length >= 5}
                         >
                             <Plus size={16} className="me-1" /> Adicionar Referência
@@ -283,11 +284,11 @@ const validarEtapa1 = () => {
                     </div>
 
                     {comparativos.map((comp, idx) => (
-                        <CardComparativo 
-                            key={idx} 
-                            idx={idx} 
-                            comp={comp} 
-                            handleFoto={handleFotoComparativo} 
+                        <CardComparativo
+                            key={idx}
+                            idx={idx}
+                            comp={comp}
+                            handleFoto={handleFotoComparativo}
                             onChange={(i, campo, val) => {
                                 const novos = [...comparativos];
                                 novos[i][campo] = val;
@@ -297,10 +298,10 @@ const validarEtapa1 = () => {
                         />
                     ))}
 
-                    <Button 
-                        variant="success" 
-                        size="lg" 
-                        className="w-100 py-3 mt-4 fw-bold shadow" 
+                    <Button
+                        variant="success"
+                        size="lg"
+                        className="w-100 py-3 mt-4 fw-bold shadow"
                         onClick={handleSalvarFinal}
                         style={{ opacity: (comparativos.length === 3 || comparativos.length === 5) ? 1 : 0.6 }}
                     >
