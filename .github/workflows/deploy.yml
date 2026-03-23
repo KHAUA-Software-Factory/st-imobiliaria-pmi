@@ -45,4 +45,4 @@ jobs:
           port: 21
           # ESSA LINHA É A CHAVE PARA O ERRO 530:
           # Ela impede que o GitHub tente usar criptografia que o servidor da Khaua talvez não suporte na porta 21.
-          # dangerous-disable-tls: true
+          dangerous-disable-tls: true
