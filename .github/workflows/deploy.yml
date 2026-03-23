@@ -33,12 +33,16 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Deploy FTP
-        uses: locaweb/ftp-deploy@1.0.0
+      - name: 📂 Deploy via FTP (KHAUA)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          host: ${{ secrets.HOST }}
-          user: ${{ secrets.USER }}
+          server: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
           password: ${{ secrets.PASS }}
-          localDir: "dist"
-          remoteDir: "/public_html"
+          local-dir: ./dist/
+          # Como você confirmou o caminho, usamos o relativo:
+          server-dir: public_html/ 
           port: 21
+          # ESSA LINHA É A CHAVE PARA O ERRO 530:
+          # Ela impede que o GitHub tente usar criptografia que o servidor da Khaua talvez não suporte na porta 21.
+          # dangerous-disable-tls: true
