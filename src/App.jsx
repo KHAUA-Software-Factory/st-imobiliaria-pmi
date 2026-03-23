@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
 import Painel from './pages/Painel';
 import Institucional from './pages/Institucional';
+import NovoContrato from './pages/NovoContrato';
 
 // Componente de Proteção
 const RotaPrivada = ({ children }) => {
@@ -37,6 +38,16 @@ function App() {
                         element={
                             <RotaPrivada>
                                 <Painel />
+                            </RotaPrivada>
+                        } 
+                    />
+
+                    {/* 2. ADICIONE ESTA ROTA PARA O WORKFLOW */}
+                    <Route 
+                        path="/pmi/novo-contrato" 
+                        element={
+                            <RotaPrivada>
+                                <NovoContrato />
                             </RotaPrivada>
                         } 
                     />
