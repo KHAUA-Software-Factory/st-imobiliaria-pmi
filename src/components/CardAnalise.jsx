@@ -15,8 +15,25 @@ const CardAnalise = ({ item, onGerir }) => {
     const dados = item.dados_alvo || {};
     const atributos = dados.atributos || {};
     
-    // 2. Lógica para exibir o Nome do Corretor (Prioriza o nome, fallback para e-mail)
-    const nomeExibicao = item.nome_corretor || item.id_corretor || 'Corretor ST';
+    // 2. Lógica para exibir o Nome do Corretor (Lógica Refinada)
+    const obterNomeExibicao = () => {
+        // Primeiro tenta a variável 'nome' que você configurou
+        if (item.nome) return item.nome;
+
+        // Segundo tenta 'nome_corretor' (caso tenha usado esse nome antes)
+        if (item.nome_corretor) return item.nome_corretor;
+
+        // Por fim, se for um e-mail (análises legadas), limpa o @ e o ponto
+        const id = item.id_corretor || '';
+        if (id.includes('@')) {
+            const parteNome = id.split('@')[0];
+            return parteNome.charAt(0).toUpperCase() + parteNome.slice(1).replace('.', ' ');
+        }
+
+        return id || 'Corretor ST';
+    };
+
+    const nomeExibicao = obterNomeExibicao();
 
     return (
         <Card className="shadow-sm border-0 h-100 p-2 overflow-hidden bg-white hover-shadow transition-all">
@@ -44,7 +61,7 @@ const CardAnalise = ({ item, onGerir }) => {
                     <span className="text-truncate">{dados.endereco?.bairro || 'Itupeva/SP'}</span>
                 </div>
 
-                {/* GRID DE ATRIBUTOS (Dormitórios, Suítes, Vagas) */}
+                {/* GRID DE ATRIBUTOS */}
                 <div className="bg-light p-3 rounded-3 mb-3 border shadow-inner">
                     <Row className="g-0 text-center">
                         <Col xs={3} className="border-end">
@@ -69,7 +86,7 @@ const CardAnalise = ({ item, onGerir }) => {
                     </Row>
                 </div>
 
-                {/* RODAPÉ DO CORRETOR (Identificação de autoria) */}
+                {/* RODAPÉ DO CORRETOR (Usando a variável tratada) */}
                 <div className="mt-auto mb-3 pt-2 border-top d-flex align-items-center">
                     <div className="bg-primary bg-opacity-10 p-1 rounded-circle me-2 d-flex align-items-center justify-content-center" style={{ width: '24px', height: '24px' }}>
                         <UserIcon size={14} className="text-primary" />
@@ -80,7 +97,7 @@ const CardAnalise = ({ item, onGerir }) => {
                     </div>
                 </div>
 
-                {/* BOTÃO DE OPÇÕES (Abre o ModalGestao) */}
+                {/* BOTÃO DE OPÇÕES */}
                 <Button 
                     variant="primary" 
                     className="w-100 fw-bold py-2 shadow-sm d-flex align-items-center justify-content-center"
