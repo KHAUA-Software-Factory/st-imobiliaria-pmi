@@ -4,7 +4,7 @@ import {
     PlusCircle, Users, FileText, LayoutDashboard,
     FilePlus, LogOut, Menu, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom'; // Certifique-se de que esta linha existe
+import { useNavigate } from 'react-router-dom';
 
 // CONTEXTO
 import { useAuth } from '../context/AuthContext';
@@ -16,7 +16,6 @@ import CardAnalise from '../components/CardAnalise';
 import ModalGestao from '../components/ModalGestao';
 import AdminCorretores from './AdminCorretores';
 
-
 // SERVIÇOS
 import { db } from '../services/firebase';
 import { gerarPMI } from '../services/pdf/pdfService';
@@ -26,47 +25,74 @@ import { collection, query, onSnapshot, orderBy, doc, deleteDoc, where } from 'f
 const Painel = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+
     // --- ESTADOS DE INTERFACE ---
     const [menuAberto, setMenuAberto] = useState(true);
     const [loading, setLoading] = useState(true);
     const [exibirFormulario, setExibirFormulario] = useState(false);
     const [verCorretores, setVerCorretores] = useState(false);
-    const [exibirNovoContrato, setExibirNovoContrato] = useState(false); // NOVO WORKFLOW
+    const [exibirNovoContrato, setExibirNovoContrato] = useState(false);
 
     // --- ESTADOS DE DADOS ---
     const [analises, setAnalises] = useState([]);
     const [isAdmin, setIsAdmin] = useState(false);
     const [analiseSelecionada, setAnaliseSelecionada] = useState(null);
-    const [exibirOpcoesPDF, setExibirOpcoesPDF] = useState(false);
     const [dadosParaEditar, setDadosParaEditar] = useState(null);
     const [gerandoPDF, setGerandoPDF] = useState(false);
 
     useEffect(() => {
-        if (!user) return;
-        const eAdmin = user.nivel === 'admin' || user.nivel === 'master';
+        // Se não tem usuário logado, para o loading imediatamente
+        if (!user) {
+            setLoading(false);
+            return;
+        }
+
+        // Define se é Admin/Master (Garante que se nivel for null, não quebra)
+        const nivelUser = user.nivel || 'corretor';
+        const eAdmin = nivelUser === 'admin' || nivelUser === 'master';
         setIsAdmin(eAdmin);
 
         const analisesRef = collection(db, "analises");
         let q;
-        if (eAdmin) {
-            q = query(analisesRef, orderBy("data_criacao", "desc"));
-        } else {
-            const emails = [user.emailGmail?.toLowerCase(), user.emailPDF?.toLowerCase()].filter(Boolean);
-            q = query(analisesRef, where("id_corretor", "in", emails), orderBy("data_criacao", "desc"));
-        }
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const docs = [];
-            snapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
-            setAnalises(docs);
+        try {
+            if (eAdmin) {
+                // Admin vê tudo
+                q = query(analisesRef, orderBy("data_criacao", "desc"));
+            } else {
+                // Corretor vê apenas o dele (Filtra por e-mail)
+                const emails = [user.emailGmail?.toLowerCase(), user.emailPDF?.toLowerCase()].filter(Boolean);
+                
+                if (emails.length > 0) {
+                    q = query(analisesRef, where("id_corretor", "in", emails), orderBy("data_criacao", "desc"));
+                } else {
+                    // Se o corretor não tem e-mail no cadastro, para o loading e mostra vazio
+                    setAnalises([]);
+                    setLoading(false);
+                    return;
+                }
+            }
+
+            // Escuta o banco de dados
+            const unsubscribe = onSnapshot(q, (snapshot) => {
+                const docs = [];
+                snapshot.forEach((doc) => docs.push({ id: doc.id, ...doc.data() }));
+                setAnalises(docs);
+                setLoading(false); // SUCESSO: Libera a tela
+            }, (error) => {
+                console.error("Erro no Firestore:", error);
+                setLoading(false); // ERRO: Libera a tela mesmo assim para não travar
+            });
+
+            return () => unsubscribe();
+        } catch (err) {
+            console.error("Erro ao montar query:", err);
             setLoading(false);
-        });
-
-        return () => unsubscribe();
+        }
     }, [user]);
 
     const handleConfirmarPDF = async (margem) => {
-        setExibirOpcoesPDF(false);
+        // setExibirOpcoesPDF(false);
         setGerandoPDF(true);
         try {
             const emailDono = analiseSelecionada.id_corretor?.toLowerCase();
@@ -81,17 +107,16 @@ const Painel = () => {
     };
 
     if (loading) return (
-        <Container className="text-center mt-5">
+        <Container className="text-center mt-5 py-5">
             <Spinner animation="border" variant="primary" />
-            <p className="mt-2 text-muted fw-bold text-uppercase">Sincronizando ST Imobiliária...</p>
+            <p className="mt-3 text-muted fw-bold text-uppercase small">Sincronizando ST Imobiliária...</p>
         </Container>
     );
 
     return (
         <Container fluid className="p-0" style={{ backgroundColor: '#f4f7f6', minHeight: '100vh' }}>
             <Row className="g-0">
-
-                {/* --- SIDEBAR DINÂMICA --- */}
+                {/* SIDEBAR */}
                 <Col
                     xs="auto"
                     className="bg-white shadow-sm d-flex flex-column py-4"
@@ -104,7 +129,6 @@ const Painel = () => {
                         zIndex: 1000
                     }}
                 >
-                    {/* TOGGLE BUTTON */}
                     <Button
                         variant="light"
                         onClick={() => setMenuAberto(!menuAberto)}
@@ -113,33 +137,33 @@ const Painel = () => {
                         {menuAberto ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
                     </Button>
 
-                    {/* PERFIL */}
                     <div className="text-center mb-4 px-2">
                         <img
                             src={user?.foto || 'https://via.placeholder.com/100'}
                             alt="Perfil"
-                            className="rounded-circle mb-2 border border-2 border-primary"
+                            className="rounded-circle mb-2 border border-2 border-primary shadow-sm"
                             style={{
-                                width: menuAberto ? '70px' : '45px',
-                                height: menuAberto ? '70px' : '45px',
+                                width: menuAberto ? '70px' : '40px',
+                                height: menuAberto ? '70px' : '40px',
                                 objectFit: 'cover',
                                 transition: '0.3s'
                             }}
                         />
                         {menuAberto && (
-                            <div className="animate__animated animate__fadeIn">
-                                <h6 className="fw-bold mb-0 text-truncate px-2">{user?.nome || 'Gilberto'}</h6>
-                                <small className="text-muted fw-bold" style={{ fontSize: '10px' }}>MASTER</small>
+                            <div className="animate__animated animate__fadeIn px-2">
+                                <h6 className="fw-bold mb-0 text-truncate text-dark">{user?.nome || 'Usuário'}</h6>
+                                <small className="text-primary fw-bold text-uppercase" style={{ fontSize: '9px' }}>
+                                    {user?.nivel || 'Corretor'}
+                                </small>
                             </div>
                         )}
                     </div>
 
                     <hr className="mx-3" />
 
-                    {/* NAVEGAÇÃO */}
                     <Nav className="flex-column gap-2 px-2">
                         <Nav.Link
-                            className={`d-flex align-items-center p-2 rounded ${!exibirNovoContrato && !verCorretores ? 'bg-primary text-white shadow' : 'text-dark'}`}
+                            className={`d-flex align-items-center p-2 rounded transition-all ${!exibirNovoContrato && !verCorretores ? 'bg-primary text-white shadow' : 'text-dark hover-bg-light'}`}
                             onClick={() => { setExibirNovoContrato(false); setVerCorretores(false); }}
                         >
                             <LayoutDashboard size={20} />
@@ -147,7 +171,7 @@ const Painel = () => {
                         </Nav.Link>
 
                         <Nav.Link
-                            className={`d-flex align-items-center p-2 rounded ${exibirNovoContrato ? 'bg-primary text-white shadow' : 'text-dark'}`}
+                            className={`d-flex align-items-center p-2 rounded transition-all ${exibirNovoContrato ? 'bg-primary text-white shadow' : 'text-dark hover-bg-light'}`}
                             onClick={() => navigate('/pmi/novo-contrato')}
                         >
                             <FilePlus size={20} />
@@ -156,7 +180,7 @@ const Painel = () => {
 
                         {isAdmin && (
                             <Nav.Link
-                                className={`d-flex align-items-center p-2 rounded ${verCorretores ? 'bg-primary text-white shadow' : 'text-dark'}`}
+                                className={`d-flex align-items-center p-2 rounded transition-all ${verCorretores ? 'bg-primary text-white shadow' : 'text-dark hover-bg-light'}`}
                                 onClick={() => setVerCorretores(true)}
                             >
                                 <Users size={20} />
@@ -165,26 +189,17 @@ const Painel = () => {
                         )}
                     </Nav>
 
-                    {/* LOGOUT NO RODAPÉ */}
                     <div className="mt-auto px-2 border-top pt-3">
                         <BotaoLogout contraido={!menuAberto} />
                     </div>
                 </Col>
 
-                {/* --- ÁREA DE CONTEÚDO --- */}
+                {/* CONTEÚDO */}
                 <Col className="p-4 p-lg-5 overflow-auto">
-
                     {verCorretores && isAdmin ? (
                         <AdminCorretores aoVoltar={() => setVerCorretores(false)} />
-                    ) : exibirNovoContrato ? (
-                        <div className="text-center py-5 bg-white rounded shadow-sm border">
-                            <h2 className="fw-bold text-primary">Workflow de Minutas</h2>
-                            <p className="text-muted">Módulo em desenvolvimento para a ST Imobiliária.</p>
-                            <Button onClick={() => setExibirNovoContrato(false)}>Voltar ao Início</Button>
-                        </div>
                     ) : (
                         <>
-                            {/* HEADER DE AÇÕES */}
                             <div className="d-flex justify-content-between align-items-center mb-5">
                                 <h2 className="fw-bold mb-0 text-primary">Painel de Avaliações</h2>
                                 <Button
@@ -197,7 +212,6 @@ const Painel = () => {
                                 </Button>
                             </div>
 
-                            {/* FORMULÁRIO DE ANÁLISE */}
                             {exibirFormulario && (
                                 <div className="mb-5 bg-white p-4 rounded shadow border-start border-primary border-4 animate__animated animate__fadeInDown">
                                     <div className="d-flex justify-content-between align-items-center mb-4">
@@ -212,7 +226,6 @@ const Painel = () => {
                                 </div>
                             )}
 
-                            {/* GRID DE CARDS COM ESPAÇAMENTO REAL */}
                             <Row className="g-4 pb-5">
                                 {analises.length === 0 && !exibirFormulario && (
                                     <Col xs={12} className="text-center py-5">
@@ -221,13 +234,8 @@ const Painel = () => {
                                 )}
 
                                 {analises.map(item => (
-                                    /* xs={12}: 1 card por linha no celular
-                                       md={6}:  2 cards por linha no tablet
-                                       lg={4}:  3 cards por linha no MacBook (telas comuns)
-                                       xxl={3}: 4 cards por linha em monitores UltraWide
-                                    */
                                     <Col key={item.id} xs={12} md={6} lg={4} xxl={3}>
-                                        <div className="h-100 shadow-sm rounded border bg-white p-2">
+                                        <div className="h-100 shadow-sm rounded border bg-white p-1">
                                             <CardAnalise
                                                 item={item}
                                                 onGerir={(analise) => setAnaliseSelecionada(analise)}
@@ -241,17 +249,16 @@ const Painel = () => {
                 </Col>
             </Row>
 
-            {/* MODAIS DE GESTÃO E PDF */}
             <ModalGestao
                 show={!!analiseSelecionada}
                 onHide={() => setAnaliseSelecionada(null)}
-                analise={analiseSelecionada} // PASSANDO OS DADOS AQUI
+                analise={analiseSelecionada}
                 onEdit={() => {
                     setDadosParaEditar(analiseSelecionada);
                     setExibirFormulario(true);
                     setAnaliseSelecionada(null);
                 }}
-                onGerarPdf={(margem) => handleConfirmarPDF(margem)} // CHAMA O PDF DIRETO
+                onGerarPdf={(margem) => handleConfirmarPDF(margem)}
                 onDelete={() => {
                     if (window.confirm("Confirmar exclusão desta análise?")) {
                         deleteDoc(doc(db, "analises", analiseSelecionada.id));
@@ -260,18 +267,6 @@ const Painel = () => {
                 }}
             />
 
-            <Modal show={exibirOpcoesPDF} onHide={() => setExibirOpcoesPDF(false)} centered size="sm">
-                <Modal.Header closeButton className="bg-primary text-white border-0">
-                    <Modal.Title className="fs-6 fw-bold">AJUSTE DE MARGEM</Modal.Title>
-                </Modal.Header>
-                <Modal.Body className="p-4 text-center d-grid gap-3">
-                    <Button variant="outline-primary" className="fw-bold py-2" onClick={() => handleConfirmarPDF(0)}>MÉDIA (0%)</Button>
-                    <Button variant="outline-danger" className="fw-bold py-2" onClick={() => handleConfirmarPDF(15)}>-15% (LIQUIDEZ)</Button>
-                    <Button variant="danger" className="fw-bold py-2" onClick={() => handleConfirmarPDF(20)}>-20% (URGÊNCIA)</Button>
-                </Modal.Body>
-            </Modal>
-
-            {/* LOADING OVERLAY PDF */}
             {gerandoPDF && (
                 <div className="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-white bg-opacity-75" style={{ zIndex: 9999 }}>
                     <Spinner animation="grow" variant="primary" />
