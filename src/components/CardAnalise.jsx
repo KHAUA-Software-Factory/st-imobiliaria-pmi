@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, Button, Badge, Row, Col } from 'react-bootstrap';
-import { Home as HomeIcon, Bed, List, Car, MapPin, FileText } from 'lucide-react';
+import { Home as HomeIcon, Bed, List, Car, MapPin, FileText, LayoutGrid } from 'lucide-react';
 
 const CardAnalise = ({ item, onGerir }) => {
     // Pegando os dados com segurança (fallback para vazio)
@@ -8,14 +8,15 @@ const CardAnalise = ({ item, onGerir }) => {
     const atributos = dados.atributos || {};
 
     return (
-        /* REMOVEMOS A TAG <Col> DAQUI - Ela deve ficar apenas no Painel.jsx */
         <Card className="shadow-sm border-0 h-100 p-2 overflow-hidden bg-white hover-shadow transition-all">
             <Card.Header className="bg-white border-0 d-flex justify-content-between align-items-center pt-3">
                 <Badge bg="success" className="px-3 py-2 shadow-sm" style={{ fontSize: '0.7rem' }}>
                     CONCLUÍDO
                 </Badge>
                 <small className="text-muted fw-bold" style={{ fontSize: '10px' }}>
-                    {new Date(item.data_criacao?.seconds * 1000).toLocaleDateString('pt-BR')}
+                    {item.data_criacao?.seconds 
+                        ? new Date(item.data_criacao.seconds * 1000).toLocaleDateString('pt-BR') 
+                        : 'Recente'}
                 </small>
             </Card.Header>
 
@@ -31,21 +32,28 @@ const CardAnalise = ({ item, onGerir }) => {
                     <span className="text-truncate">{dados.endereco?.bairro || 'Itupeva/SP'}</span>
                 </div>
 
-                {/* GRID DE ATRIBUTOS (Agora usando Row/Col interna para não espremer) */}
+                {/* GRID DE ATRIBUTOS - ATUALIZADO (Sem Salas, Com Dormitórios) */}
                 <div className="bg-light p-3 rounded-3 mb-4 border shadow-inner">
                     <Row className="g-0 text-center">
+                        {/* ÁREA */}
                         <Col xs={3} className="border-end">
                             <HomeIcon size={16} className="text-secondary mb-1" />
                             <div className="fw-bold small text-dark">{atributos.area_construida || '0'}m²</div>
                         </Col>
+                        
+                        {/* DORMITÓRIOS (NOVO) */}
                         <Col xs={3} className="border-end">
                             <Bed size={16} className="text-secondary mb-1" />
+                            <div className="fw-bold small text-dark">{atributos.dormitorios || '0'} D</div>
+                        </Col>
+
+                        {/* SUÍTES */}
+                        <Col xs={3} className="border-end">
+                            <LayoutGrid size={16} className="text-secondary mb-1" />
                             <div className="fw-bold small text-dark">{atributos.suites || '0'} S</div>
                         </Col>
-                        <Col xs={3} className="border-end">
-                            <List size={16} className="text-secondary mb-1" />
-                            <div className="fw-bold small text-dark">{atributos.salas || '0'} Sl</div>
-                        </Col>
+
+                        {/* VAGAS */}
                         <Col xs={3}>
                             <Car size={16} className="text-secondary mb-1" />
                             <div className="fw-bold small text-dark">{atributos.vagas || '0'} V</div>
