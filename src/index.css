@@ -1,0 +1,87 @@
+/* 1. Importação da Montserrat via Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+:root {
+  /* 2. Alteração da Fonte Principal */
+  font-family: 'Montserrat', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Força a fonte em todos os elementos, incluindo inputs e botões */
+* {
+  font-family: 'Montserrat', sans-serif;
+}
+
+a {
+  font-weight: 600; /* Montserrat fica melhor com pesos mais altos */
+  color: #0056b3;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #004494;
+}
+
+body {
+  margin: 0;
+  /* Removido o display: flex para não centralizar sua Home e sumir com o topo */
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #f4f7f6; 
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 600; /* Peso Montserrat para botões */
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+/* ... Mantendo o restante das suas regras de media query e cards ... */
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+.card {
+  transition: transform 0.2s;
+  border-radius: 12px !important;
+  border: none !important;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+}
+
+.btn-primary {
+  background-color: #0056b3 !important;
+  border: none;
+  font-weight: 600 !important;
+}
