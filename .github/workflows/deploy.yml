@@ -16,7 +16,7 @@ jobs:
       - name: Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Instalar dependências
         run: npm install
@@ -33,16 +33,15 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: 📂 Deploy via FTP (KHAUA)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      - name: Deploy FTP Locaweb
+        uses: locaweb/ftp-deploy@1.0.0
         with:
-          server: ${{ secrets.HOST }}
-          username: ${{ secrets.USER }}
+          host: ${{ secrets.HOST }} 
+          user: ${{ secrets.USER }}
           password: ${{ secrets.PASS }}
-          local-dir: ./dist/
-          # Como você confirmou o caminho, usamos o relativo:
-          server-dir: public_html/ 
-          port: 21
-          # ESSA LINHA É A CHAVE PARA O ERRO 530:
-          # Ela impede que o GitHub tente usar criptografia que o servidor da Khaua talvez não suporte na porta 21.
-          dangerous-disable-tls: true
+          # OBRIGATÓRIO: A pasta que o npm run build cria no seu Mac/GitHub
+          localDir: "dist" 
+          # ONDE VAI CAIR: Como seu servidor é Linux, public_html é o correto
+          remoteDir: "public_html" 
+          # DICA: Se o erro 530 persistir, tente adicionar:
+          forceSsl: false
