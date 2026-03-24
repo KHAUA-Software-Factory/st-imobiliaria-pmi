@@ -2,9 +2,11 @@ import React from 'react';
 import { Container, Button, Navbar, Row, Col, Card, Badge } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import {
-
+  ShieldCheck,
   ArrowRight,
   Code2,
+  Cpu,
+  Globe,
   Construction,
   Terminal,
   Database,
@@ -22,7 +24,7 @@ const Institucional = () => {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'linear-gradient(180deg, #f8fafc 0%, #eef4fb 100%)', fontFamily: 'Inter, sans-serif' }}>
-
+      
       {/* NAVBAR: KHAUA. HUB */}
       <Navbar expand="lg" style={{ backgroundColor: COLORS.KHAUA_DARK, borderBottom: `1px solid rgba(255,255,255,0.06)` }} variant="dark" className="shadow-sm py-3 sticky-top">
         <Container>
@@ -55,21 +57,21 @@ const Institucional = () => {
             </div>
 
             <h1 className="fw-bold mb-4" style={{ color: COLORS.KHAUA_DARK, fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', lineHeight: '1', letterSpacing: '-2px' }}>
-              Engenharia de Software <br />
+              Engenharia de Software <br/>
               <span style={{ color: COLORS.KHAUA_ACCENT }}>para processos complexos.</span>
             </h1>
 
             <p className="mb-5" style={{ color: COLORS.TEXT_SOFT, fontSize: '1.2rem', lineHeight: '1.7', maxWidth: '650px' }}>
-              A <strong>KHAUA.</strong> é uma Software Factory focada em arquitetura de dados, automação e sistemas sob medida. Desenvolvemos soluções escaláveis que resolvem gargalos operacionais em diversos setores, utilizando tecnologia de ponta para converter desafios em ativos digitais.
+                A <strong>KHAUA.</strong> é uma Software Factory focada em arquitetura de dados, automação e sistemas sob medida. Desenvolvemos soluções escaláveis que resolvem gargalos operacionais em diversos setores, utilizando tecnologia de ponta para converter desafios em ativos digitais.
             </p>
 
             <div className="p-4 rounded-4 border bg-white shadow-sm d-inline-block">
-              <p className="small fw-bold text-dark mb-3 text-uppercase" style={{ letterSpacing: '1px' }}>Acesso à aplicação em produção:</p>
-              <Link to="/pmi/login">
-                <Button size="lg" style={{ backgroundColor: COLORS.ST_BLUE, border: `1px solid ${COLORS.ST_GOLD}`, color: COLORS.ST_GOLD, borderRadius: '12px', padding: '12px 30px', fontWeight: 700 }}>
-                  Plataforma ST Imobiliária <ArrowRight size={18} className="ms-2" />
-                </Button>
-              </Link>
+                <p className="small fw-bold text-dark mb-3 text-uppercase" style={{ letterSpacing: '1px' }}>Acesso à aplicação em produção:</p>
+                <Link to="/pmi/login">
+                    <Button size="lg" style={{ backgroundColor: COLORS.ST_BLUE, border: `1px solid ${COLORS.ST_GOLD}`, color: COLORS.ST_GOLD, borderRadius: '12px', padding: '12px 30px', fontWeight: 700 }}>
+                        Plataforma ST Imobiliária <ArrowRight size={18} className="ms-2" />
+                    </Button>
+                </Link>
             </div>
           </Col>
 
@@ -78,35 +80,35 @@ const Institucional = () => {
               <h5 className="fw-bold mb-4 d-flex align-items-center" style={{ color: COLORS.KHAUA_DARK }}>
                 <Database size={20} className="me-2 text-primary" /> Stack & Ecosystem
               </h5>
-
+              
               <div className="d-flex align-items-center p-3 mb-3 rounded-4 border bg-white">
                 <Code2 size={24} className="text-primary me-3" />
                 <div className="flex-grow-1">
-                  <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Custom Software Development</h6>
-                  <small className="text-muted">Soluções Enterprise & Web</small>
+                    <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Custom Software Development</h6>
+                    <small className="text-muted">Soluções Enterprise & Web</small>
                 </div>
               </div>
 
               <div className="d-flex align-items-center p-3 mb-3 rounded-4 border bg-white">
                 <Database size={24} className="text-primary me-3" />
                 <div className="flex-grow-1">
-                  <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Data Architecture</h6>
-                  <small className="text-muted">Modelagem PostgreSQL & Cloud</small>
+                    <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Data Architecture</h6>
+                    <small className="text-muted">Modelagem PostgreSQL & Cloud</small>
                 </div>
               </div>
 
               <div className="d-flex align-items-center p-3 mb-1 rounded-4 border" style={{ opacity: 0.7 }}>
                 <Layers size={24} className="text-secondary me-3" />
                 <div className="flex-grow-1">
-                  <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Workflow Automation</h6>
-                  <small className="text-muted">Otimização de processos internos</small>
+                    <h6 className="fw-bold mb-0" style={{ fontSize: '14px' }}>Workflow Automation</h6>
+                    <small className="text-muted">Otimização de processos internos</small>
                 </div>
               </div>
 
               <hr className="my-4" />
               <div className="text-center">
-                <Badge bg="light" text="dark" className="p-2 border">#SoftwareFactory</Badge>
-                <Badge bg="light" text="dark" className="ms-2 p-2 border">#DigitalTransformation</Badge>
+                 <Badge bg="light" text="dark" className="p-2 border">#SoftwareFactory</Badge>
+                 <Badge bg="light" text="dark" className="ms-2 p-2 border">#DigitalTransformation</Badge>
               </div>
             </div>
           </Col>
@@ -116,14 +118,14 @@ const Institucional = () => {
       {/* FOOTER CORPORATIVO */}
       <footer className="py-4 mt-auto border-top" style={{ backgroundColor: COLORS.KHAUA_DARK, color: '#94a3b8' }}>
         <Container className="d-flex flex-column flex-md-row justify-content-between align-items-center">
-          <div>
-            <h5 className="fw-bold text-white mb-0">KHAUA<span style={{ color: COLORS.KHAUA_ACCENT }}>.</span></h5>
-            <small style={{ fontSize: '11px' }}>Engineering Digital Results.</small>
-          </div>
-          <div className="mt-3 mt-md-0 text-md-end">
-            <small>© 2026 KHAUA. Labs | Software Factory</small><br />
-            <small style={{ fontSize: '10px' }}>Itupeva, SP · Brasil</small>
-          </div>
+            <div>
+                <h5 className="fw-bold text-white mb-0">KHAUA<span style={{ color: COLORS.KHAUA_ACCENT }}>.</span></h5>
+                <small style={{ fontSize: '11px' }}>Engineering Digital Results.</small>
+            </div>
+            <div className="mt-3 mt-md-0 text-md-end">
+                <small>© 2026 KHAUA. Labs | Software Factory</small><br/>
+                <small style={{ fontSize: '10px' }}>Itupeva, SP · Brasil</small>
+            </div>
         </Container>
       </footer>
     </div>

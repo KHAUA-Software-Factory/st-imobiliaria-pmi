@@ -31,6 +31,7 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
 
     const [comparativos, setComparativos] = useState([]);
 
+
     useEffect(() => {
         if (dadosPreenchidos) {
             if (dadosPreenchidos.dados_alvo) setDadosAlvo(dadosPreenchidos.dados_alvo);
@@ -75,16 +76,28 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
     const handleFotoAlvo = async (e, index) => {
         const file = e.target.files[0];
         if (!file) return;
+
         setCarregando(true);
         try {
+            // O executarUpload já gera ID único, isso é ótimo!
             const url = await executarUpload(file, 'alvo');
+
             setDadosAlvo(prev => {
-                const novas = [...prev.fotos];
-                novas[index] = url;
-                return { ...prev, fotos: novas };
+                const novasFotos = [...prev.fotos];
+                novasFotos[index] = url;
+                // Retornamos um NOVO objeto para garantir que o React perceba a mudança
+                return { ...prev, fotos: novasFotos };
             });
-        } catch (err) { alert("Erro no upload da foto do alvo.", err); }
-        finally { setCarregando(false); }
+
+            // DICA KHAUA: Force um log para ver se a URL nova chegou no seu MacBook
+            console.log("Nova foto carregada:", url);
+
+        } catch (err) {
+            alert("Erro no upload da foto do alvo.");
+            console.error(err);
+        } finally {
+            setCarregando(false);
+        }
     };
 
     const handleFotoComparativo = async (e, idxComp, idxFoto) => {
@@ -146,171 +159,155 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
         return null;
     };
 
-    const handleSalvarFinal = async () => {
-        // 1. Validação de Quantidade (Regra de Negócio ST Imobiliária)
-        const qtd = comparativos.length;
-        if (qtd !== 3 && qtd !== 5) {
-            return alert(`Regra ST Imobiliária: O PMI deve conter exatamente 3 ou 5 comparativos. (Atual: ${qtd})`);
-        }
+const handleSalvarFinal = async () => {
+    // 1. Validação de Quantidade (Regra de Negócio ST Imobiliária)
+    const qtd = comparativos.length;
+    if (qtd !== 3 && qtd !== 5) {
+        return alert(`Regra ST Imobiliária: O PMI deve conter exatamente 3 ou 5 comparativos. (Atual: ${qtd})`);
+    }
 
-        // 2. Validação Rigorosa de cada Comparativo
-        for (let i = 0; i < comparativos.length; i++) {
-            const comp = comparativos[i];
-            const n = i + 1; // Número para identificar o card no alerta
+    // 2. Validação Rigorosa de cada Comparativo
+    for (let i = 0; i < comparativos.length; i++) {
+        const comp = comparativos[i];
+        const n = i + 1;
 
-            // Campos de texto e links
-            if (!comp.bairro?.trim()) return alert(`Comparativo ${n}: O bairro é obrigatório.`);
-            if (!comp.link_anuncio?.trim()) return alert(`Comparativo ${n}: O link do anúncio é obrigatório para conferência.`);
+        if (!comp.bairro?.trim()) return alert(`Comparativo ${n}: O bairro é obrigatório.`);
+        if (!comp.link_anuncio?.trim()) return alert(`Comparativo ${n}: O link do anúncio é obrigatório.`);
+        if (!comp.area_total || comp.area_total <= 0) return alert(`Comparativo ${n}: Informe a Área Total.`);
+        if (!comp.area_construida || comp.area_construida <= 0) return alert(`Comparativo ${n}: Informe a Área Construída.`);
+        if (!comp.valor_venda || comp.valor_venda <= 0) return alert(`Comparativo ${n}: O valor de venda é obrigatório.`);
+        if (!comp.fotos[0]) return alert(`Comparativo ${n}: A foto principal é obrigatória.`);
+    }
 
-            // Áreas (Diferenciando Total de Construída)
-            if (!comp.area_total || comp.area_total <= 0) {
-                return alert(`Comparativo ${n}: Informe a Área Total do Terreno (m²).`);
-            }
-            if (!comp.area_construida || comp.area_construida <= 0) {
-                return alert(`Comparativo ${n}: Informe a Área Construída (m²).`);
-            }
+    // 3. Processo de Salvamento Único (Fora do Loop)
+    setCarregando(true);
 
-            // Valores e Atributos
-            if (!comp.valor_venda || comp.valor_venda <= 0) {
-                return alert(`Comparativo ${n}: O valor de venda é obrigatório.`);
-            }
-            if (comp.dormitorios === undefined || comp.dormitorios === null || comp.dormitorios < 0) {
-                return alert(`Comparativo ${n}: Informe a quantidade de dormitórios.`);
-            }
+    try {
+        const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
+        const perfil = await obterDadosCorretor(emailGmail);
 
-            // Foto Obrigatória
-            if (!comp.fotos[0] || comp.fotos[0] === "") {
-                return alert(`Comparativo ${n}: A foto principal é obrigatória para o relatório.`);
-            }
-        }
-
-        // 3. Início do Processo de Salvamento
-        setCarregando(true);
-
-        try {
-            // Identificação do Corretor (Ponte Gmail -> ST Imobiliária)
-            const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
-            const perfil = await obterDadosCorretor(emailGmail);
-
-            if (!emailGmail) {
-                setCarregando(false);
-                return alert("Erro crítico: Não foi possível identificar o corretor.");
-            }
-
-            const payload = {
-                id_corretor: emailGmail,
-                email_pdf: perfil?.emailPDF?.toLowerCase() || '',
-                ultima_atualizacao: serverTimestamp(),
-                dados_alvo: dadosAlvo,
-                comparativos: comparativos.map((comp) => ({
-                    ...comp,
-                    valor_venda: Number(comp.valor_venda || 0) / 100
-                })),
-                status: 'concluido'
-            };
-
-            // 4. Gravação no Firestore (Update ou Create)
-            if (dadosPreenchidos?.id) {
-                // Se já existe um ID, estamos editando
-                await updateDoc(doc(db, "analises", dadosPreenchidos.id), payload);
-            } else {
-                // Se não existe ID, é uma nova análise
-                payload.data_criacao = serverTimestamp();
-                await addDoc(collection(db, "analises"), payload);
-            }
-
-            alert("Análise salva com sucesso na ST Imobiliária!");
-            aoFinalizar(); // Volta para a Home
-
-        } catch (e) {
-            alert("Erro técnico ao salvar no banco de dados.");
-            console.error("Erro no salvamento:", e);
-        } finally {
+        if (!emailGmail) {
             setCarregando(false);
+            return alert("Erro crítico: Usuário não identificado.");
         }
-    };
 
-    return (
-        <Container className="mt-2 pb-5">
-            {carregando && (
-                <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white opacity-75" style={{ zIndex: 9999 }}>
-                    <Spinner animation="border" variant="primary" />
-                    <span className="ms-2 fw-bold text-primary text-uppercase">Processando...</span>
-                </div>
-            )}
+        const payload = {
+            id_corretor: emailGmail,
+            email_pdf: perfil?.emailPDF?.toLowerCase() || '',
+            ultima_atualizacao: serverTimestamp(),
+            dados_alvo: dadosAlvo, 
+            comparativos: comparativos.map((comp) => ({
+                ...comp,
+                // Tratamento de valor para evitar divisões infinitas na edição
+                valor_venda: typeof comp.valor_venda === 'string' 
+                    ? Number(comp.valor_venda.replace(/\D/g, '')) / 100 
+                    : comp.valor_venda
+            })),
+            status: 'concluido'
+        };
 
-            <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
-                <Button variant="outline-dark" size="sm" onClick={etapa === 1 ? aoFinalizar : () => setEtapa(1)}>
-                    <ArrowLeft size={16} /> Voltar
-                </Button>
-                <h4 className="fw-bold mb-0">PMI ST Imobiliária</h4>
-                <Badge bg="primary" className="px-3 py-2">Etapa {etapa}/2</Badge>
+        // 4. Decisão: Update (Edição) ou Add (Novo)
+        if (dadosPreenchidos?.id) {
+            const docRef = doc(db, "analises", dadosPreenchidos.id);
+            await updateDoc(docRef, payload);
+            alert("Análise atualizada com sucesso na ST!");
+        } else {
+            payload.data_criacao = serverTimestamp();
+            await addDoc(collection(db, "analises"), payload);
+            alert("Nova análise criada com sucesso na ST!");
+        }
+
+        aoFinalizar(); // Retorna ao painel
+
+    } catch (e) {
+        console.error("Erro ao salvar na KHAUA:", e);
+        alert("Erro técnico ao salvar no banco de dados.");
+    } finally {
+        setCarregando(false);
+    }
+};
+
+return (
+    <Container className="mt-2 pb-5">
+        {carregando && (
+            <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white opacity-75" style={{ zIndex: 9999 }}>
+                <Spinner animation="border" variant="primary" />
+                <span className="ms-2 fw-bold text-primary text-uppercase">Processando...</span>
             </div>
+        )}
 
-            {etapa === 1 ? (
-                <>
-                    <EtapaAlvo
-                        dadosAlvo={dadosAlvo}
-                        setDadosAlvo={setDadosAlvo}
-                        handleFotoAlvo={handleFotoAlvo}
-                        buscarCEP={buscarCEP}
-                    />
-                    <Button variant="primary" className="w-100 py-3 fw-bold shadow-sm" onClick={() => {
-                        const erro = validarEtapa1();
-                        if (erro) alert(erro); else { setEtapa(2); window.scrollTo(0, 0); }
-                    }}>
-                        AVANÇAR PARA COMPARATIVOS
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded border">
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setComparativos([...comparativos, {
-                                bairro: '', valor_venda: 0, area_construida: 0,
-                                suites: 0, vagas: 0, salas: 0, dormitorios: 0,
-                                has_piscina: false, has_area_gourmet: false,
-                                fotos: ["", "", "", ""], link_anuncio: ''
-                            }])}
-                            disabled={comparativos.length >= 5}
-                        >
-                            <Plus size={16} className="me-1" /> Adicionar Referência
-                        </Button>
-                        <Badge bg={comparativos.length === 3 || comparativos.length === 5 ? "success" : "warning"} className="p-2">
-                            {comparativos.length === 3 || comparativos.length === 5 ? "✓ Padrão Atingido" : `Mínimo 3 ou 5 (Atual: ${comparativos.length})`}
-                        </Badge>
-                    </div>
+        <div className="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+            <Button variant="outline-dark" size="sm" onClick={etapa === 1 ? aoFinalizar : () => setEtapa(1)}>
+                <ArrowLeft size={16} /> Voltar
+            </Button>
+            <h4 className="fw-bold mb-0">PMI ST Imobiliária</h4>
+            <Badge bg="primary" className="px-3 py-2">Etapa {etapa}/2</Badge>
+        </div>
 
-                    {comparativos.map((comp, idx) => (
-                        <CardComparativo
-                            key={idx}
-                            idx={idx}
-                            comp={comp}
-                            handleFoto={handleFotoComparativo}
-                            onChange={(i, campo, val) => {
-                                const novos = [...comparativos];
-                                novos[i][campo] = val;
-                                setComparativos(novos);
-                            }}
-                            onRemove={(i) => setComparativos(comparativos.filter((_, index) => index !== i))}
-                        />
-                    ))}
-
+        {etapa === 1 ? (
+            <>
+                <EtapaAlvo
+                    dadosAlvo={dadosAlvo}
+                    setDadosAlvo={setDadosAlvo}
+                    handleFotoAlvo={handleFotoAlvo}
+                    buscarCEP={buscarCEP}
+                />
+                <Button variant="primary" className="w-100 py-3 fw-bold shadow-sm" onClick={() => {
+                    const erro = validarEtapa1();
+                    if (erro) alert(erro); else { setEtapa(2); window.scrollTo(0, 0); }
+                }}>
+                    AVANÇAR PARA COMPARATIVOS
+                </Button>
+            </>
+        ) : (
+            <>
+                <div className="d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded border">
                     <Button
-                        variant="success"
-                        size="lg"
-                        className="w-100 py-3 mt-4 fw-bold shadow"
-                        onClick={handleSalvarFinal}
-                        style={{ opacity: (comparativos.length === 3 || comparativos.length === 5) ? 1 : 0.6 }}
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setComparativos([...comparativos, {
+                            bairro: '', valor_venda: 0, area_construida: 0,
+                            suites: 0, vagas: 0, salas: 0, dormitorios: 0,
+                            has_piscina: false, has_area_gourmet: false,
+                            fotos: ["", "", "", ""], link_anuncio: ''
+                        }])}
+                        disabled={comparativos.length >= 5}
                     >
-                        SALVAR ANÁLISE NA ST IMOBILIÁRIA
+                        <Plus size={16} className="me-1" /> Adicionar Referência
                     </Button>
-                </>
-            )}
-        </Container>
-    );
+                    <Badge bg={comparativos.length === 3 || comparativos.length === 5 ? "success" : "warning"} className="p-2">
+                        {comparativos.length === 3 || comparativos.length === 5 ? "✓ Padrão Atingido" : `Mínimo 3 ou 5 (Atual: ${comparativos.length})`}
+                    </Badge>
+                </div>
+
+                {comparativos.map((comp, idx) => (
+                    <CardComparativo
+                        key={idx}
+                        idx={idx}
+                        comp={comp}
+                        handleFoto={handleFotoComparativo}
+                        onChange={(i, campo, val) => {
+                            const novos = [...comparativos];
+                            novos[i][campo] = val;
+                            setComparativos(novos);
+                        }}
+                        onRemove={(i) => setComparativos(comparativos.filter((_, index) => index !== i))}
+                    />
+                ))}
+
+                <Button
+                    variant="success"
+                    size="lg"
+                    className="w-100 py-3 mt-4 fw-bold shadow"
+                    onClick={handleSalvarFinal}
+                    style={{ opacity: (comparativos.length === 3 || comparativos.length === 5) ? 1 : 0.6 }}
+                >
+                    SALVAR ANÁLISE NA ST IMOBILIÁRIA
+                </Button>
+            </>
+        )}
+    </Container>
+);
 };
 
 export default FormularioAnalise;
