@@ -40,7 +40,7 @@ const EtapaAlvo = ({ dadosAlvo, setDadosAlvo, buscarCEP, handleFotoAlvo }) => {
             {/* LOCALIZAÇÃO */}
             <Card className="shadow-sm border-0 mb-4 p-4">
                 <h6 className="fw-bold text-primary mb-3">
-                    <MapPin size={18} className="me-2" /> Localização do Alvo
+                    <MapPin size={18} className="me-2" /> Localização do Imóvel Alvo
                 </h6>
                 <Row className="g-3">
                     <Col md={2}>
