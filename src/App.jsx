@@ -1,40 +1,38 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-
-// 1. IMPORTANTE: Importe o PROVIDER (que abraça o app) 
-// e o HOOK (que busca os dados). Verifique os caminhos!
 import { AuthProvider, useAuth } from './context/AuthContext';
+
 // COMPONENTES
 import Login from './components/Login';
 import Painel from './pages/Painel';
-import Institucional from './pages/Institucional';
 import NovoContrato from './pages/NovoContrato';
 
-// Componente de Proteção
+// Componente de Proteção KHAUA.
 const RotaPrivada = ({ children }) => {
     const { user, loading } = useAuth();
     
-    if (loading) return <div className="p-5 text-center fw-bold">Carregando ST Imobiliária...</div>;
+    if (loading) return (
+        <div className="d-flex justify-content-center align-items-center vh-100 fw-bold text-primary">
+            SINCRONIZANDO KHAUA...
+        </div>
+    );
     
-    // Se não tiver usuário, manda para o login do PMI
-    return user ? children : <Navigate to="/pmi/login" />;
+    // Agora o login é a raiz do subdomínio
+    return user ? children : <Navigate to="/" />;
 };
 
 function App() {
     return (
-        /* 2. MUDANÇA AQUI: Use AuthProvider em vez de AuthContext */
         <AuthProvider> 
-            <Router>
+            {/* Se o subdomínio aponta direto para a pasta, o basename é "/" */}
+            <Router basename="/">
                 <Routes>
-                    {/* Site institucional na raiz */}
-                    <Route path="/" element={<Institucional />} />
-                    
-                    {/* Login do sistema */}
-                    <Route path="/pmi/login" element={<Login />} />
+                    {/* 1. LOGIN AGORA É A RAIZ DO SUBDOMÍNIO */}
+                    <Route path="/" element={<Login />} />
 
-                    {/* Painel protegido */}
+                    {/* 2. PAINEL PRINCIPAL */}
                     <Route 
-                        path="/pmi" 
+                        path="/painel" 
                         element={
                             <RotaPrivada>
                                 <Painel />
@@ -42,9 +40,9 @@ function App() {
                         } 
                     />
 
-                    {/* 2. ADICIONE ESTA ROTA PARA O WORKFLOW */}
+                    {/* 3. WORKFLOW DE CONTRATOS */}
                     <Route 
-                        path="/pmi/novo-contrato" 
+                        path="/novo-contrato" 
                         element={
                             <RotaPrivada>
                                 <NovoContrato />
@@ -52,7 +50,7 @@ function App() {
                         } 
                     />
 
-                    {/* Redirecionamento de segurança */}
+                    {/* Redirecionamento de segurança para o Login */}
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
             </Router>

@@ -44,5 +44,5 @@ jobs:
           user: ${{ secrets.USER }}
           password: ${{ secrets.PASS }}
           localDir: "dist"
-          remoteDir: "public_html"
+          remoteDir: "public_html/st"
           forceSsl: false # Importante: manter false para evitar erro 530 na porta 21

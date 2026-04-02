@@ -31,7 +31,7 @@ const Login = () => { // Removemos a prop onLogin daqui
       if (userDoc.exists()) {
         // 2. Se existe, o AuthContext vai detectar a mudança de estado automaticamente.
         // Só precisamos mandar o corretor para a rota do Painel.
-        navigate('/pmi'); 
+        navigate('/painel'); 
       } else {
         setError(`Acesso negado: o e-mail ${email} não possui autorização no sistema ST.`);
         await signOut(auth); // Desloga para não deixar a sessão "suja"
