@@ -1,12 +1,15 @@
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
-  
-  # Forçar HTTPS
-  RewriteCond %{HTTPS} off
-  RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # Regra para React Router
+  # 1. Forçar HTTPS (Compatível com Proxy e Balanceadores Locaweb)
+  # Se o cabeçalho X-Forwarded-Proto não for https e a porta não for 443
+  RewriteCond %{HTTP:X-Forwarded-Proto} !https
+  RewriteCond %{HTTPS} off
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+  # 2. Regra para React Router
+  # Se o pedido NÃO for para um arquivo real (-f) e NÃO for para uma pasta real (-d)
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
