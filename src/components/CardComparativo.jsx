@@ -34,6 +34,7 @@ const formatInteger = (value) => onlyDigits(String(value || ''));
 
 // --- COMPONENTE ---
 const CardComparativo = ({ idx, comp, handleFoto, handlePaste, onChange, onRemove }) => {
+    const uid = comp._localId ?? `idx-${idx}`;
     return (
         <Card className="shadow-sm border-0 mb-4 overflow-hidden">
             <Card.Header className="bg-dark text-white d-flex justify-content-between align-items-center py-2">
@@ -68,16 +69,17 @@ const CardComparativo = ({ idx, comp, handleFoto, handlePaste, onChange, onRemov
                 </Row>
 
                 <Row className="g-3 mb-3">
-                    <Col md={3}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Total</Form.Label><Form.Control size="sm" type="text" value={formatDecimal(comp.area_total)} onChange={(e) => onChange(idx, 'area_total', parseDecimal(e.target.value))} /></Col>
-                    <Col md={3}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Const.</Form.Label><Form.Control size="sm" type="text" value={formatDecimal(comp.area_construida)} onChange={(e) => onChange(idx, 'area_construida', parseDecimal(e.target.value))} /></Col>
+                    <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Total *</Form.Label><Form.Control size="sm" type="text" value={formatDecimal(comp.area_total)} onChange={(e) => onChange(idx, 'area_total', parseDecimal(e.target.value))} /></Col>
+                    <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Const. *</Form.Label><Form.Control size="sm" type="text" value={formatDecimal(comp.area_construida)} onChange={(e) => onChange(idx, 'area_construida', parseDecimal(e.target.value))} /></Col>
                     <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Dorms</Form.Label><Form.Control size="sm" type="text" value={formatInteger(comp.dormitorios)} onChange={(e) => onChange(idx, 'dormitorios', Number(formatInteger(e.target.value)))} /></Col>
                     <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Suítes</Form.Label><Form.Control size="sm" type="text" value={formatInteger(comp.suites)} onChange={(e) => onChange(idx, 'suites', Number(formatInteger(e.target.value)))} /></Col>
                     <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Vagas</Form.Label><Form.Control size="sm" type="text" value={formatInteger(comp.vagas)} onChange={(e) => onChange(idx, 'vagas', Number(formatInteger(e.target.value)))} /></Col>
+                    <Col md={2}><Form.Label className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Salas</Form.Label><Form.Control size="sm" type="text" value={formatInteger(comp.salas)} onChange={(e) => onChange(idx, 'salas', Number(formatInteger(e.target.value)))} /></Col>
                 </Row>
 
                 <div className="d-flex gap-3 mb-4 p-2 bg-light rounded border">
-                    <Form.Check type="switch" id={`piscina-${idx}`} label={<span className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Piscina</span>} checked={comp.has_piscina} onChange={(e) => onChange(idx, 'has_piscina', e.target.checked)} />
-                    <Form.Check type="switch" id={`gourmet-${idx}`} label={<span className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Gourmet</span>} checked={comp.has_area_gourmet} onChange={(e) => onChange(idx, 'has_area_gourmet', e.target.checked)} />
+                    <Form.Check type="switch" id={`piscina-${uid}`} label={<span className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Piscina</span>} checked={comp.has_piscina} onChange={(e) => onChange(idx, 'has_piscina', e.target.checked)} />
+                    <Form.Check type="switch" id={`gourmet-${uid}`} label={<span className="small fw-bold text-muted text-uppercase" style={{ fontSize: '10px' }}>Área Gourmet</span>} checked={comp.has_area_gourmet} onChange={(e) => onChange(idx, 'has_area_gourmet', e.target.checked)} />
                 </div>
 
                 <hr className="my-3" />
@@ -100,11 +102,11 @@ const CardComparativo = ({ idx, comp, handleFoto, handlePaste, onChange, onRemov
                                             type="file"
                                             accept="image/*"
                                             className="d-none"
-                                            id={`foto-comp-${idx}-${fIdx}`}
+                                            id={`foto-comp-${uid}-${fIdx}`}
                                             onChange={(e) => handleFoto(e, idx, fIdx)}
                                         />
                                         <label
-                                            htmlFor={`foto-comp-${idx}-${fIdx}`}
+                                            htmlFor={`foto-comp-${uid}-${fIdx}`}
                                             className={`btn btn-sm w-100 d-flex align-items-center justify-content-center gap-1 ${url ? 'btn-success' : 'btn-outline-primary'}`}
                                             style={{ fontSize: '10px', fontWeight: 'bold' }}
                                         >
@@ -138,7 +140,7 @@ const CardComparativo = ({ idx, comp, handleFoto, handlePaste, onChange, onRemov
                                             />
                                         ) : (
                                             <span className="text-muted fw-bold text-uppercase text-center" style={{ fontSize: '8px', lineHeight: '1.2' }}>
-                                                Clique aqui <br/> e Cole (Ctrl+V)
+                                                Clique aqui <br /> Ctrl+V / Cmd+V
                                             </span>
                                         )}
                                     </div>
