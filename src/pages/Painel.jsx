@@ -133,7 +133,7 @@ const Painel = () => {
                     </Button>
 
                     <div className="text-center mb-4 px-2">
-                        <img src={user?.foto || 'https://via.placeholder.com/100'} alt="Perfil"
+                        <img src={user?.fotoUrl || user?.foto || 'https://via.placeholder.com/100'} alt="Perfil"
                             className="rounded-circle mb-2 border border-2 border-primary shadow-sm"
                             style={{ width: menuAberto ? '70px' : '40px', height: menuAberto ? '70px' : '40px', objectFit: 'cover' }} />
                         {menuAberto && (
