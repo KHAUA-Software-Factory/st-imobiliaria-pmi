@@ -1,20 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Container, Button, Badge, Spinner } from 'react-bootstrap';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { db, storage, auth } from '../services/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
 
-// IMPORTAÇÃO DOS SUB-COMPONENTES MODULARIZADOS
 import EtapaAlvo from './EtapaAlvo';
 import CardComparativo from './CardComparativo';
 import { obterDadosCorretor } from '../services/userService';
+import { novoComparativoVazio, withLocalId } from '../utils/comparativoUtils';
+import { validarEtapa1, validarEtapa2, mapComparativoParaFirestore } from '../utils/analiseValidators';
+
+const deletarFotoNoStorage = async (url) => {
+    if (!url || typeof url !== 'string' || !url.includes('firebasestorage.googleapis.com')) return;
+    try {
+        await deleteObject(ref(storage, url));
+    } catch (e) {
+        console.error('Erro ao remover arquivo do Storage:', e);
+    }
+};
 
 const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
     const [etapa, setEtapa] = useState(1);
-    const [carregando, setCarregando] = useState(false);
+    const [carregandoUpload, setCarregandoUpload] = useState(false);
+    const [carregandoSalvar, setCarregandoSalvar] = useState(false);
+    const uploadsEmAndamento = useRef(0);
 
-    // ESTADO INICIAL DO IMÓVEL ALVO
+    const iniciarUpload = () => {
+        uploadsEmAndamento.current += 1;
+        setCarregandoUpload(true);
+    };
+
+    const finalizarUpload = () => {
+        uploadsEmAndamento.current = Math.max(0, uploadsEmAndamento.current - 1);
+        if (uploadsEmAndamento.current === 0) setCarregandoUpload(false);
+    };
+
     const [dadosAlvo, setDadosAlvo] = useState({
         cliente: '',
         descricao: '',
@@ -25,19 +46,19 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
             suites: 0, vagas: 0, dormitorios: 0, salas: 0,
             has_piscina: false, has_area_gourmet: false
         },
-        fotos: ["", "", "", ""]
+        fotos: ['', '', '', '']
     });
 
     const [comparativos, setComparativos] = useState([]);
 
     useEffect(() => {
-        if (dadosPreenchidos) {
-            if (dadosPreenchidos.dados_alvo) setDadosAlvo(dadosPreenchidos.dados_alvo);
-            if (dadosPreenchidos.comparativos) setComparativos(dadosPreenchidos.comparativos);
+        if (!dadosPreenchidos) return;
+        if (dadosPreenchidos.dados_alvo) setDadosAlvo(dadosPreenchidos.dados_alvo);
+        if (dadosPreenchidos.comparativos?.length) {
+            setComparativos(dadosPreenchidos.comparativos.map(withLocalId));
         }
     }, [dadosPreenchidos]);
 
-    // --- LÓGICA DE CEP ---
     const buscarCEP = async (cep) => {
         const valor = cep.replace(/\D/g, '');
         if (valor.length === 8) {
@@ -57,23 +78,22 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                         }
                     }));
                 }
-            } catch (e) { console.error("Erro ao buscar CEP", e); }
+            } catch (e) { console.error('Erro ao buscar CEP', e); }
         }
     };
 
-    // --- 🚀 LÓGICA DE UPLOAD UNIFICADA (INPUT + PASTE) ---
     const executarUpload = async (arquivo, pasta) => {
-        if (!arquivo) return "";
-        const nomeLimpo = arquivo.name.replace(/[^a-zA-Z0-9.]/g, "_");
+        if (!arquivo) return '';
+        const nomeLimpo = arquivo.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const idUnico = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         const arquivoRef = ref(storage, `fotos_${pasta}/${idUnico}_${nomeLimpo}`);
         const result = await uploadBytes(arquivoRef, arquivo);
-        return await getDownloadURL(result.ref);
+        return getDownloadURL(result.ref);
     };
 
     const processarNovoUpload = async (file, index, tipo = 'alvo', idxComp = null) => {
         if (!file) return;
-        setCarregando(true);
+        iniciarUpload();
         try {
             const pasta = tipo === 'alvo' ? 'alvo' : `comp_${idxComp}`;
             const url = await executarUpload(file, pasta);
@@ -86,28 +106,43 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                 });
             } else {
                 setComparativos(prev => {
+                    if (idxComp == null || idxComp < 0 || idxComp >= prev.length) return prev;
+                    const alvo = prev[idxComp];
+                    if (!alvo) return prev;
                     const novos = [...prev];
-                    novos[idxComp].fotos[index] = url;
+                    const fotos = [...(alvo.fotos || [])];
+                    fotos[index] = url;
+                    novos[idxComp] = { ...alvo, fotos };
                     return novos;
                 });
             }
         } catch (err) {
-            alert("Erro no upload da imagem.");
+            alert('Erro no upload da imagem.');
             console.error(err);
         } finally {
-            setCarregando(false);
+            finalizarUpload();
         }
     };
 
-    // Captura o clique tradicional
-    const handleFotoAlvo = (e, index) => processarNovoUpload(e.target.files[0], index, 'alvo');
-    const handleFotoComparativo = (e, idxComp, idxFoto) => processarNovoUpload(e.target.files[0], idxFoto, 'comp', idxComp);
+    const handleFotoAlvo = (e, index) => {
+        const f = e.target.files?.[0];
+        if (f) processarNovoUpload(f, index, 'alvo');
+        e.target.value = '';
+    };
 
-    // MÁGICA DO PASTE: Captura o Ctrl+V / Cmd+V
+    const handleFotoComparativo = (e, idxComp, idxFoto) => {
+        const f = e.target.files?.[0];
+        if (f) processarNovoUpload(f, idxFoto, 'comp', idxComp);
+        e.target.value = '';
+    };
+
     const handlePasteFoto = async (e, index, tipo = 'alvo', idxComp = null) => {
-        const items = e.clipboardData.items;
+        const items = e.clipboardData?.items;
+        if (!items) return;
         for (let i = 0; i < items.length; i++) {
-            if (items[i].type.indexOf("image") !== -1) {
+            if (items[i].type.indexOf('image') !== -1) {
+                e.preventDefault();
+                e.stopPropagation();
                 const blob = items[i].getAsFile();
                 const file = new File([blob], `pasted_image_${Date.now()}.png`, { type: blob.type });
                 await processarNovoUpload(file, index, tipo, idxComp);
@@ -116,92 +151,95 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
         }
     };
 
-    // --- VALIDAÇÕES OBRIGATÓRIAS ETAPA 1 ---
-    const validarEtapa1 = () => {
-        const { cliente, descricao, endereco, atributos } = dadosAlvo;
-        if (!cliente.trim()) return "O nome do cliente é obrigatório.";
-        if (!descricao.trim()) return "A descrição narrativa é obrigatória.";
-        if (!endereco.cep.trim()) return "O CEP é obrigatório.";
-        if (!endereco.logradouro.trim()) return "O logradouro é obrigatório.";
-        if (!endereco.bairro.trim()) return "O bairro é obrigatório.";
-        if (!endereco.numero.trim()) return "O número é obrigatório.";
-        if (!atributos.area_total || atributos.area_total <= 0) return "Informe a Área Total.";
-        if (!atributos.area_construida || atributos.area_construida <= 0) return "Informe a Área Construída.";
-        if (!dadosAlvo.fotos[0]) return "A foto principal do imóvel alvo é obrigatória.";
-        return null;
-    };
+    const mensagemErroEtapa2 = validarEtapa2(comparativos);
 
-    // --- 🧹 SALVAMENTO COM CLEANUP DE NUVEM (STORAGE) ---
     const handleSalvarFinal = async () => {
-        const qtd = comparativos.length;
-        if (qtd !== 3 && qtd !== 5) {
-            return alert(`Regra ST Imobiliária: O PMI deve conter exatamente 3 ou 5 comparativos. (Atual: ${qtd})`);
+        const erro = mensagemErroEtapa2;
+        if (erro) {
+            alert(erro);
+            return;
         }
 
-        setCarregando(true);
+        setCarregandoSalvar(true);
         try {
-            const emailGmail = (user?.email || auth.currentUser?.email)?.toLowerCase();
-            const perfil = await obterDadosCorretor(emailGmail);
+            const emailLogado = (user?.emailGmail || user?.email || auth.currentUser?.email)?.toLowerCase();
 
-            // 1. Lógica de Limpeza de Fotos Antigas
             if (dadosPreenchidos?.id) {
                 const fotosAntigasAlvo = dadosPreenchidos.dados_alvo?.fotos || [];
                 const fotosNovasAlvo = dadosAlvo.fotos;
-                const fotosAntigasComp = (dadosPreenchidos.comparativos || []).flatMap(c => c.fotos);
-                const fotosNovasComp = comparativos.flatMap(c => c.fotos);
+                const fotosAntigasComp = (dadosPreenchidos.comparativos || []).flatMap(c => c.fotos || []);
+                const fotosNovasComp = comparativos.flatMap(c => c.fotos || []);
 
                 const todasAntigas = [...fotosAntigasAlvo, ...fotosAntigasComp];
                 const todasNovas = [...fotosNovasAlvo, ...fotosNovasComp];
 
-                const paraDeletar = todasAntigas.filter(url => 
-                    url && url.includes("firebase") && !todasNovas.includes(url)
+                const paraDeletar = todasAntigas.filter(url =>
+                    url && url.includes('firebasestorage.googleapis.com') && !todasNovas.includes(url)
                 );
 
-                if (paraDeletar.length > 0) {
-                    console.log("KHAUA Cleanup: Removendo fotos substituídas...");
-                    await Promise.allSettled(paraDeletar.map(url => deleteObject(ref(storage, url))));
+                await Promise.all(paraDeletar.map(deletarFotoNoStorage));
+            }
+
+            const comparativosFirestore = comparativos.map(mapComparativoParaFirestore);
+
+            /** Em edição, mantém o corretor dono da análise (admin não rouba o id_corretor). */
+            let idCorretorPayload = emailLogado;
+            let emailPdfPayload = '';
+            if (dadosPreenchidos?.id) {
+                idCorretorPayload = String(dadosPreenchidos.id_corretor || emailLogado).toLowerCase();
+                emailPdfPayload = String(dadosPreenchidos.email_pdf || '').toLowerCase();
+                if (!emailPdfPayload && idCorretorPayload) {
+                    const perfilDono = await obterDadosCorretor(idCorretorPayload);
+                    emailPdfPayload = perfilDono?.emailPDF?.toLowerCase() || '';
                 }
+            } else {
+                const perfil = await obterDadosCorretor(emailLogado);
+                emailPdfPayload = perfil?.emailPDF?.toLowerCase() || '';
             }
 
             const payload = {
-                id_corretor: emailGmail,
-                email_pdf: perfil?.emailPDF?.toLowerCase() || '',
+                id_corretor: idCorretorPayload,
+                email_pdf: emailPdfPayload,
                 ultima_atualizacao: serverTimestamp(),
-                dados_alvo: dadosAlvo, 
-                comparativos: comparativos.map((comp) => ({
-                    ...comp,
-                    valor_venda: typeof comp.valor_venda === 'string' 
-                        ? Number(comp.valor_venda.replace(/\D/g, '')) / 100 
-                        : comp.valor_venda
-                })),
+                dados_alvo: dadosAlvo,
+                comparativos: comparativosFirestore,
                 status: 'concluido'
             };
 
             if (dadosPreenchidos?.id) {
-                await updateDoc(doc(db, "analises", dadosPreenchidos.id), payload);
-                alert("Análise atualizada com sucesso na ST!");
+                await updateDoc(doc(db, 'analises', dadosPreenchidos.id), payload);
+                alert('Análise atualizada com sucesso na ST!');
             } else {
                 payload.data_criacao = serverTimestamp();
-                await addDoc(collection(db, "analises"), payload);
-                alert("Nova análise criada com sucesso na ST!");
+                await addDoc(collection(db, 'analises'), payload);
+                alert('Nova análise criada com sucesso na ST!');
             }
 
             aoFinalizar();
-
         } catch (e) {
-            console.error("Erro ao salvar:", e);
-            alert("Erro técnico ao salvar.");
+            console.error('Erro ao salvar:', e);
+            alert('Erro técnico ao salvar.');
         } finally {
-            setCarregando(false);
+            setCarregandoSalvar(false);
         }
     };
 
+    const overlayAtivo = carregandoUpload || carregandoSalvar;
+    const textoOverlay = carregandoSalvar ? 'Salvando...' : 'Enviando imagem...';
+
+    const podeSalvar = mensagemErroEtapa2 === null;
+
     return (
         <Container className="mt-2 pb-5">
-            {carregando && (
-                <div className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white opacity-75" style={{ zIndex: 9999 }}>
+            {overlayAtivo && (
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-white bg-opacity-75"
+                    style={{ zIndex: 9999, pointerEvents: 'all' }}
+                    role="status"
+                    aria-live="polite"
+                >
                     <Spinner animation="border" variant="primary" />
-                    <span className="ms-2 fw-bold text-primary text-uppercase">Processando...</span>
+                    <span className="ms-2 fw-bold text-primary text-uppercase">{textoOverlay}</span>
                 </div>
             )}
 
@@ -219,12 +257,13 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                         dadosAlvo={dadosAlvo}
                         setDadosAlvo={setDadosAlvo}
                         handleFotoAlvo={handleFotoAlvo}
-                        handlePasteAlvo={handlePasteFoto} // Passando função de Paste
+                        handlePasteAlvo={handlePasteFoto}
                         buscarCEP={buscarCEP}
                     />
                     <Button variant="primary" className="w-100 py-3 fw-bold shadow-sm" onClick={() => {
-                        const erro = validarEtapa1();
-                        if (erro) alert(erro); else { setEtapa(2); window.scrollTo(0, 0); }
+                        const erro = validarEtapa1(dadosAlvo);
+                        if (erro) alert(erro);
+                        else { setEtapa(2); window.scrollTo(0, 0); }
                     }}>
                         AVANÇAR PARA COMPARATIVOS
                     </Button>
@@ -235,34 +274,39 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                         <Button
                             variant="primary"
                             size="sm"
-                            onClick={() => setComparativos([...comparativos, {
-                                bairro: '', valor_venda: 0, area_construida: 0, area_total: 0,
-                                suites: 0, vagas: 0, salas: 0, dormitorios: 0,
-                                has_piscina: false, has_area_gourmet: false,
-                                fotos: ["", "", "", ""], link_anuncio: ''
-                            }])}
+                            onClick={() => setComparativos([...comparativos, novoComparativoVazio()])}
                             disabled={comparativos.length >= 5}
                         >
                             <Plus size={16} className="me-1" /> Adicionar Referência
                         </Button>
-                        <Badge bg={comparativos.length === 3 || comparativos.length === 5 ? "success" : "warning"} className="p-2">
-                            {comparativos.length === 3 || comparativos.length === 5 ? "✓ Padrão Atingido" : `Mínimo 3 ou 5 (Atual: ${comparativos.length})`}
+                        <Badge
+                            bg={podeSalvar ? 'success' : 'warning'}
+                            className="p-2 text-wrap text-start"
+                            style={{ maxWidth: 'min(100%, 22rem)' }}
+                            title={mensagemErroEtapa2 || undefined}
+                        >
+                            {podeSalvar
+                                ? '✓ Pronto para salvar'
+                                : (mensagemErroEtapa2 || `Ajuste os comparativos (atual: ${comparativos.length})`)}
                         </Badge>
                     </div>
 
                     {comparativos.map((comp, idx) => (
                         <CardComparativo
-                            key={idx}
+                            key={comp._localId}
                             idx={idx}
                             comp={comp}
                             handleFoto={handleFotoComparativo}
-                            handlePaste={(e, fIdx) => handlePasteFoto(e, fIdx, 'comp', idx)} // Passando função de Paste
+                            handlePaste={(e, fIdx) => handlePasteFoto(e, fIdx, 'comp', idx)}
                             onChange={(i, campo, val) => {
-                                const novos = [...comparativos];
-                                novos[i][campo] = val;
-                                setComparativos(novos);
+                                setComparativos(prev => {
+                                    const novos = [...prev];
+                                    if (i < 0 || i >= novos.length) return prev;
+                                    novos[i] = { ...novos[i], [campo]: val };
+                                    return novos;
+                                });
                             }}
-                            onRemove={(i) => setComparativos(comparativos.filter((_, index) => index !== i))}
+                            onRemove={(i) => setComparativos(prev => prev.filter((_, index) => index !== i))}
                         />
                     ))}
 
@@ -271,7 +315,8 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                         size="lg"
                         className="w-100 py-3 mt-4 fw-bold shadow"
                         onClick={handleSalvarFinal}
-                        style={{ opacity: (comparativos.length === 3 || comparativos.length === 5) ? 1 : 0.6 }}
+                        disabled={!podeSalvar || carregandoSalvar || carregandoUpload}
+                        style={{ opacity: podeSalvar ? 1 : 0.6 }}
                     >
                         SALVAR ANÁLISE NA ST IMOBILIÁRIA
                     </Button>
