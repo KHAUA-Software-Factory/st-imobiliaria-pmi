@@ -8,10 +8,23 @@
   RewriteCond %{HTTPS} off
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # 2. Regra para React Router
+  # 2. Feed XML público para Meta/Facebook
+  RewriteRule ^facebook$ /facebook/index.xml [L]
+  RewriteRule ^facebook/$ /facebook/index.xml [L]
+
+  # 3. Regra para React Router
   # Se o pedido NÃO for para um arquivo real (-f) e NÃO for para uma pasta real (-d)
   RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule . /index.html [L]
+</IfModule>
+
+AddType application/xml .xml
+
+<IfModule mod_headers.c>
+  <FilesMatch "\.xml$">
+    Header set Content-Type "application/xml; charset=utf-8"
+    Header set Cache-Control "public, max-age=3600"
+  </FilesMatch>
 </IfModule>
