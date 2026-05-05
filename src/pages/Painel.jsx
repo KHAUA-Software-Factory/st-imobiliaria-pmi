@@ -16,7 +16,6 @@ import AdminCorretores from './AdminCorretores';
 
 // FIREBASE
 import { db } from '../services/firebase';
-import { gerarPMI } from '../services/pdf/pdfService';
 import { obterDadosCorretor } from '../services/userService';
 import { collection, query, onSnapshot, orderBy, doc, deleteDoc, where } from 'firebase/firestore';
 
@@ -102,6 +101,7 @@ const Painel = () => {
         try {
             const emailDono = analiseSelecionada.id_corretor?.toLowerCase();
             let dadosCorretor = await obterDadosCorretor(emailDono) || user;
+            const { gerarPMI } = await import('../services/pdf/pdfService');
             await gerarPMI(analiseSelecionada, dadosCorretor, user.emailGmail, margem);
             setAnaliseSelecionada(null);
         } catch (err) {
@@ -153,7 +153,7 @@ const Painel = () => {
                             {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '11px'}}>Dashboard</span>}
                         </Nav.Link>
 
-                        <Nav.Link className="d-flex align-items-center p-2 rounded text-dark hover-bg-light" onClick={() => navigate('/pmi/novo-contrato')}>
+                        <Nav.Link className="d-flex align-items-center p-2 rounded text-dark hover-bg-light" onClick={() => navigate('/novo-contrato')}>
                             <FilePlus size={20} />
                             {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '11px'}}>Novo Contrato</span>}
                         </Nav.Link>
