@@ -11,6 +11,7 @@ const rootDir = path.resolve(__dirname, '..');
 const publicDir = path.join(rootDir, 'public');
 const outputFile = path.join(publicDir, 'facebook.xml');
 const outputFileCatalogo = path.join(publicDir, 'catalogo.xml');
+const outputFileCommerce = path.join(publicDir, 'facebook-commerce.xml');
 const cacheDir = path.join(rootDir, '.cache');
 const sourceCacheFile = path.join(cacheDir, 'facebook-source-cache.xml');
 const geocodeCacheFile = path.join(cacheDir, 'facebook-geocode-cache.json');
@@ -343,6 +344,28 @@ function buildListingXml(item) {
   ].filter(Boolean).join('\n');
 }
 
+function commerceAvailabilityFromListing(availability) {
+  return availability === 'for_rent' || availability === 'for_sale' ? 'in stock' : 'out of stock';
+}
+
+function buildCommerceItemXml(item) {
+  const [firstImage, ...otherImages] = item.images;
+  return [
+    '    <item>',
+    `      <id>${escapeXml(item.home_listing_id)}</id>`,
+    `      <title>${cdata(item.name)}</title>`,
+    `      <description>${cdata(item.description)}</description>`,
+    `      <availability>${escapeXml(commerceAvailabilityFromListing(item.availability))}</availability>`,
+    '      <condition>new</condition>',
+    `      <price>${escapeXml(item.price)}</price>`,
+    `      <link>${escapeXml(item.url)}</link>`,
+    `      <image_link>${escapeXml(firstImage)}</image_link>`,
+    ...otherImages.map((img) => `      <additional_image_link>${escapeXml(img)}</additional_image_link>`),
+    '      <brand>ST Imobiliaria</brand>',
+    '    </item>',
+  ].join('\n');
+}
+
 function toFacebookListing(source) {
   const homeListingId = firstNonEmpty(source.home_listing_id, source.id, source.codigo, source.code, source.reference);
   const name = stripHtml(firstNonEmpty(source.name, source.title, source.titulo, source.imovel_titulo));
@@ -460,13 +483,29 @@ async function main() {
     '',
   ].join('\n');
 
+  const commerceItemsXml = transformed.map(buildCommerceItemXml).join('\n');
+  const commerceXml = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<rss version="2.0">',
+    '  <channel>',
+    '    <title>ST Imobiliaria - Commerce Feed</title>',
+    `    <link>${escapeXml(`${BASE_PUBLIC_URL}/facebook-commerce.xml`)}</link>`,
+    '    <description>Feed alternativo para catálogos do tipo Commerce</description>',
+    commerceItemsXml,
+    '  </channel>',
+    '</rss>',
+    '',
+  ].join('\n');
+
   await fs.writeFile(outputFile, xml, 'utf8');
   await fs.writeFile(outputFileCatalogo, xml, 'utf8');
+  await fs.writeFile(outputFileCommerce, commerceXml, 'utf8');
 
   console.log(`[facebook-feed] origem: ${sourceListings.length} listings`);
   console.log(`[facebook-feed] saída: ${transformed.length} listings válidos`);
   console.log(`[facebook-feed] descartados: ${discarded.length}`);
   console.log(`[facebook-feed] gerado em ${path.relative(rootDir, outputFile)}`);
+  console.log(`[facebook-feed] gerado em ${path.relative(rootDir, outputFileCommerce)}`);
 }
 
 main().catch((error) => {

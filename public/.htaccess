@@ -11,6 +11,8 @@
   # 2. Feed XML público para Meta/Facebook (sem redirecionar para pasta)
   RewriteRule ^facebook$ /facebook.xml [L]
   RewriteRule ^facebook/$ /facebook.xml [L]
+  RewriteRule ^facebook-commerce$ /facebook-commerce.xml [L]
+  RewriteRule ^facebook-commerce/$ /facebook-commerce.xml [L]
 
   # 3. Regra para React Router
   # Se o pedido NÃO for para um arquivo real (-f) e NÃO for para uma pasta real (-d)
