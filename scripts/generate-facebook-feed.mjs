@@ -315,23 +315,12 @@ async function resolveCoordinates(source, address, geocodeCache) {
 }
 
 function buildListingXml(item) {
-  const primaryImage = item.images[0] || '';
-  const additionalImages = item.images.slice(1).map((img) => `    <additional_image_link>${escapeXml(img)}</additional_image_link>`).join('\n');
   const imagesXml = item.images.map((img) => `    <image>\n      <url>${escapeXml(img)}</url>\n    </image>`).join('\n');
-  const commerceAvailability = item.availability === 'for_rent' ? 'in stock' : 'in stock';
   return [
-    '  <item>',
-    `    <id>${escapeXml(item.home_listing_id)}</id>`,
-    `    <title>${cdata(item.name)}</title>`,
-    `    <link>${escapeXml(item.url)}</link>`,
-    `    <image_link>${escapeXml(primaryImage)}</image_link>`,
-    additionalImages,
-    '    <brand>ST Imobiliaria</brand>',
-    '    <condition>new</condition>',
-    `    <availability>${escapeXml(commerceAvailability)}</availability>`,
+    '  <listing>',
     `    <home_listing_id>${escapeXml(item.home_listing_id)}</home_listing_id>`,
     `    <name>${cdata(item.name)}</name>`,
-    `    <listing_availability>${escapeXml(item.availability)}</listing_availability>`,
+    `    <availability>${escapeXml(item.availability)}</availability>`,
     `    <description>${cdata(item.description)}</description>`,
     '    <address format="simple">',
     `      <component name="addr1">${escapeXml(item.address.addr1)}</component>`,
@@ -346,7 +335,7 @@ function buildListingXml(item) {
     `    <price>${escapeXml(item.price)}</price>`,
     `    <property_type>${escapeXml(item.property_type)}</property_type>`,
     `    <url>${escapeXml(item.url)}</url>`,
-    '  </item>',
+    '  </listing>',
   ].join('\n');
 }
 
@@ -450,15 +439,11 @@ async function main() {
   const listingsXml = transformed.map(buildListingXml).join('\n');
   const xml = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<rss version="2.0">',
-    '  <channel>',
-    '    <title>ST Imobiliaria - Facebook Real Estate Feed</title>',
-    `    <link>${escapeXml(`${BASE_PUBLIC_URL}/facebook`)}</link>`,
-    '    <description>Feed de imóveis para integração com Meta/Facebook</description>',
-    `    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>`,
+    '<listings>',
+    '  <title>ST Imobiliaria Feed</title>',
+    `  <link rel="self" href="${escapeXml(BASE_PUBLIC_URL)}"/>`,
     listingsXml,
-    '  </channel>',
-    '</rss>',
+    '</listings>',
     '',
   ].join('\n');
 

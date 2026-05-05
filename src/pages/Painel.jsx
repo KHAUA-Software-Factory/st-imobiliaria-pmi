@@ -22,6 +22,7 @@ import { collection, query, onSnapshot, orderBy, doc, deleteDoc, where } from 'f
 const Painel = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const nivelAtual = String(user?.nivel || 'corretor').toLowerCase();
 
     // --- ESTADOS ---
     const [menuAberto, setMenuAberto] = useState(true);
@@ -35,6 +36,7 @@ const Painel = () => {
     const [dadosParaEditar, setDadosParaEditar] = useState(null);
     const workflowUrl = import.meta.env.VITE_FACEBOOK_WORKFLOW_URL || 'https://github.com/KHAUA-Software-Factory/st-imobiliaria-pmi/actions/workflows/facebook-feed.yml';
     const feedUrl = `${window.location.origin}/facebook`;
+    const canManageFeed = nivelAtual === 'admin' || nivelAtual === 'master';
 
     useEffect(() => {
         // 1. Se não houver usuário, encerra o loading
@@ -183,7 +185,7 @@ const Painel = () => {
                             <div className="d-flex justify-content-between align-items-center mb-5">
                                 <h2 className="fw-bold mb-0 text-primary">Painel de Avaliações</h2>
                                 <div className="d-flex align-items-center gap-2">
-                                    {isAdmin && (
+                                    {canManageFeed && (
                                         <>
                                             <Button
                                                 variant="outline-dark"
