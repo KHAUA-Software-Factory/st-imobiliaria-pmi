@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner, Nav } from 'react-bootstrap';
 import {
     PlusCircle, Users, LayoutDashboard,
-    FilePlus, ChevronLeft, ChevronRight, ClipboardList
+    FilePlus, ChevronLeft, ChevronRight, ClipboardList, RefreshCw, ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -16,7 +16,6 @@ import AdminCorretores from './AdminCorretores';
 
 // FIREBASE
 import { db } from '../services/firebase';
-import { gerarPMI } from '../services/pdf/pdfService';
 import { obterDadosCorretor } from '../services/userService';
 import { collection, query, onSnapshot, orderBy, doc, deleteDoc, where } from 'firebase/firestore';
 
@@ -34,6 +33,8 @@ const Painel = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [analiseSelecionada, setAnaliseSelecionada] = useState(null);
     const [dadosParaEditar, setDadosParaEditar] = useState(null);
+    const workflowUrl = import.meta.env.VITE_FACEBOOK_WORKFLOW_URL || 'https://github.com/KHAUA-Software-Factory/st-imobiliaria-pmi/actions/workflows/facebook-feed.yml';
+    const feedUrl = `${window.location.origin}/facebook`;
 
     useEffect(() => {
         // 1. Se não houver usuário, encerra o loading
@@ -102,6 +103,7 @@ const Painel = () => {
         try {
             const emailDono = analiseSelecionada.id_corretor?.toLowerCase();
             let dadosCorretor = await obterDadosCorretor(emailDono) || user;
+            const { gerarPMI } = await import('../services/pdf/pdfService');
             await gerarPMI(analiseSelecionada, dadosCorretor, user.emailGmail, margem);
             setAnaliseSelecionada(null);
         } catch (err) {
@@ -153,7 +155,7 @@ const Painel = () => {
                             {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '11px'}}>Dashboard</span>}
                         </Nav.Link>
 
-                        <Nav.Link className="d-flex align-items-center p-2 rounded text-dark hover-bg-light" onClick={() => navigate('/pmi/novo-contrato')}>
+                        <Nav.Link className="d-flex align-items-center p-2 rounded text-dark hover-bg-light" onClick={() => navigate('/novo-contrato')}>
                             <FilePlus size={20} />
                             {menuAberto && <span className="ms-2 fw-bold text-uppercase" style={{fontSize: '11px'}}>Novo Contrato</span>}
                         </Nav.Link>
@@ -180,10 +182,34 @@ const Painel = () => {
                         <>
                             <div className="d-flex justify-content-between align-items-center mb-5">
                                 <h2 className="fw-bold mb-0 text-primary">Painel de Avaliações</h2>
-                                <Button variant="primary" size="lg" className="fw-bold shadow d-flex align-items-center"
-                                    onClick={() => { setExibirFormulario(true); setDadosParaEditar(null); }}>
-                                    <PlusCircle size={22} className="me-2" /> NOVA ANÁLISE
-                                </Button>
+                                <div className="d-flex align-items-center gap-2">
+                                    {isAdmin && (
+                                        <>
+                                            <Button
+                                                variant="outline-dark"
+                                                size="sm"
+                                                className="fw-bold d-flex align-items-center"
+                                                title="Abre o feed XML em nova aba"
+                                                onClick={() => window.open(feedUrl, '_blank', 'noopener,noreferrer')}
+                                            >
+                                                <ExternalLink size={16} className="me-2" /> VER FEED
+                                            </Button>
+                                            <Button
+                                                variant="outline-primary"
+                                                size="sm"
+                                                className="fw-bold d-flex align-items-center"
+                                                title="Abre o workflow para executar a geração imediatamente"
+                                                onClick={() => window.open(workflowUrl, '_blank', 'noopener,noreferrer')}
+                                            >
+                                                <RefreshCw size={16} className="me-2" /> GERAR FEED
+                                            </Button>
+                                        </>
+                                    )}
+                                    <Button variant="primary" size="lg" className="fw-bold shadow d-flex align-items-center"
+                                        onClick={() => { setExibirFormulario(true); setDadosParaEditar(null); }}>
+                                        <PlusCircle size={22} className="me-2" /> NOVA ANÁLISE
+                                    </Button>
+                                </div>
                             </div>
 
                             {exibirFormulario && (

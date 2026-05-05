@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, Row, Col, Form, Button } from 'react-bootstrap';
 import { Save, MapPin, Home, Camera, CheckCircle, ClipboardPaste, Upload } from 'lucide-react';
+import { tiposImagemPermitidos } from '../utils/fileValidators';
 
 const EtapaAlvo = ({ dadosAlvo, setDadosAlvo, buscarCEP, handleFotoAlvo, handlePasteAlvo }) => {
     const impedirSubmit = (e) => e.preventDefault();
@@ -227,7 +228,7 @@ const EtapaAlvo = ({ dadosAlvo, setDadosAlvo, buscarCEP, handleFotoAlvo, handleP
                                         </Button>
                                         <input
                                             type="file"
-                                            accept="image/*"
+                                            accept={tiposImagemPermitidos}
                                             onChange={(e) => handleFotoAlvo(e, i)}
                                             className="position-absolute top-0 start-0 w-100 h-100 opacity-0"
                                             style={{ cursor: 'pointer' }}

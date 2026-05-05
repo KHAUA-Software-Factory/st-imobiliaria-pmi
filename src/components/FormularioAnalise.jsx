@@ -10,6 +10,7 @@ import CardComparativo from './CardComparativo';
 import { obterDadosCorretor } from '../services/userService';
 import { novoComparativoVazio, withLocalId } from '../utils/comparativoUtils';
 import { validarEtapa1, validarEtapa2, mapComparativoParaFirestore } from '../utils/analiseValidators';
+import { validarImagem } from '../utils/fileValidators';
 
 const deletarFotoNoStorage = async (url) => {
     if (!url || typeof url !== 'string' || !url.includes('firebasestorage.googleapis.com')) return;
@@ -84,10 +85,13 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
 
     const executarUpload = async (arquivo, pasta) => {
         if (!arquivo) return '';
+        const erroArquivo = validarImagem(arquivo);
+        if (erroArquivo) throw new Error(erroArquivo);
+
         const nomeLimpo = arquivo.name.replace(/[^a-zA-Z0-9.]/g, '_');
         const idUnico = `${Date.now()}_${Math.floor(Math.random() * 1000)}`;
         const arquivoRef = ref(storage, `fotos_${pasta}/${idUnico}_${nomeLimpo}`);
-        const result = await uploadBytes(arquivoRef, arquivo);
+        const result = await uploadBytes(arquivoRef, arquivo, { contentType: arquivo.type });
         return getDownloadURL(result.ref);
     };
 
@@ -117,7 +121,7 @@ const FormularioAnalise = ({ user, dadosPreenchidos, aoFinalizar }) => {
                 });
             }
         } catch (err) {
-            alert('Erro no upload da imagem.');
+            alert(err.message || 'Erro no upload da imagem.');
             console.error(err);
         } finally {
             finalizarUpload();

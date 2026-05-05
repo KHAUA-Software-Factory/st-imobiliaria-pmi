@@ -1,0 +1,50 @@
+name: Generate Facebook Feed
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 00:00 no horário de Brasília (UTC-3) => 03:00 UTC
+    - cron: '0 3 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: facebook-feed
+  cancel-in-progress: true
+
+jobs:
+  generate-and-deploy-feed:
+    name: Generate and Deploy Feed XML
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Facebook XML feed
+        env:
+          FACEBOOK_SOURCE_XML_URL: "https://www.stimobiliaria.com.br/integracao/facebook"
+          FACEBOOK_BASE_PUBLIC_URL: "https://st.khaua.com.br"
+          FACEBOOK_FETCH_TIMEOUT_MS: "12000"
+          FACEBOOK_FETCH_RETRIES: "2"
+          FACEBOOK_GEOCODER_USER_AGENT: "st-facebook-feed-bot/1.0 (+https://st.khaua.com.br/facebook)"
+        run: npm run facebook:generate
+
+      - name: FTP Deploy Facebook feed only
+        uses: locaweb/ftp-deploy@1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          user: ${{ secrets.USER }}
+          password: ${{ secrets.PASS }}
+          localDir: "public/facebook"
+          remoteDir: "public_html/st/facebook"
+          forceSsl: false

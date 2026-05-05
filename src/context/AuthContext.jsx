@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 // 1. Exportamos o objeto do contexto
 // eslint-disable-next-line react-refresh/only-export-components
@@ -13,23 +13,40 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-            try {
-                if (fbUser) {
-                    const docSnap = await getDoc(doc(db, "usuarios", fbUser.email.toLowerCase()));
-                    if (docSnap.exists()) {
-                        setUser({ ...docSnap.data(), uid: fbUser.uid });
-                    }
+        let unsubscribeUserDoc = null;
+
+        const unsubscribeAuth = onAuthStateChanged(auth, (fbUser) => {
+            if (unsubscribeUserDoc) {
+                unsubscribeUserDoc();
+                unsubscribeUserDoc = null;
+            }
+
+            const email = fbUser?.email?.toLowerCase();
+            if (!fbUser || !email) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            unsubscribeUserDoc = onSnapshot(doc(db, "usuarios", email), (docSnap) => {
+                if (docSnap.exists()) {
+                    setUser({ ...docSnap.data(), uid: fbUser.uid, email });
                 } else {
                     setUser(null);
                 }
-            } catch (e) {
-                console.error(e);
-            } finally {
                 setLoading(false);
-            }
+            }, (e) => {
+                console.error(e);
+                setUser(null);
+                setLoading(false);
+            });
         });
-        return () => unsubscribe();
+
+        return () => {
+            unsubscribeAuth();
+            if (unsubscribeUserDoc) unsubscribeUserDoc();
+        };
     }, []);
 
     return (

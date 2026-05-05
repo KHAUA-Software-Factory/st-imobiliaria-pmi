@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, Row, Col, Form, Button, InputGroup } from 'react-bootstrap';
 import { Trash2, Link as LinkIcon, Home, CheckCircle } from 'lucide-react';
 import { NumberFormatBase } from 'react-number-format';
+import { tiposImagemPermitidos } from '../utils/fileValidators';
 
 // --- FUNÇÕES DE FORMATAÇÃO MANTIDAS ---
 const onlyDigits = (value) => value.replace(/\D/g, '');
@@ -100,7 +101,7 @@ const CardComparativo = ({ idx, comp, handleFoto, handlePaste, onChange, onRemov
                                     <div className="mb-2">
                                         <input
                                             type="file"
-                                            accept="image/*"
+                                            accept={tiposImagemPermitidos}
                                             className="d-none"
                                             id={`foto-comp-${uid}-${fIdx}`}
                                             onChange={(e) => handleFoto(e, idx, fIdx)}
