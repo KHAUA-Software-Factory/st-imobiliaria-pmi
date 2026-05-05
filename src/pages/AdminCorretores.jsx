@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Table, Card, Badge, Spinner } from 'react-bootstrap';
-import { ArrowLeft, Save, UserPlus, Trash2, Edit, UserCheck } from 'lucide-react';
+import { ArrowLeft, Save, UserPlus, Trash2, Edit } from 'lucide-react';
+import { tiposImagemPermitidos } from '../utils/fileValidators';
 
 // SERVIÇOS
 import { db } from '../services/firebase';
@@ -152,7 +153,7 @@ const AdminCorretores = ({ aoVoltar }) => {
                             </Col>
                             <Col md={6}>
                                 <Form.Label className="fw-bold small text-secondary">Foto de Perfil (Opcional)</Form.Label>
-                                <Form.Control type="file" accept="image/*" onChange={e => setForm({...form, arquivoFoto: e.target.files[0]})} className="py-2" />
+                                <Form.Control type="file" accept={tiposImagemPermitidos} onChange={e => setForm({...form, arquivoFoto: e.target.files[0]})} className="py-2" />
                             </Col>
                             
                             <Col md={12} className="text-end mt-4">

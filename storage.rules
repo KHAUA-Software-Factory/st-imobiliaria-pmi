@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function isAuthorized() {
+      return signedIn()
+        && firestore.exists(/databases/(default)/documents/usuarios/$(userEmail()));
+    }
+
+    function userData() {
+      return firestore.get(/databases/(default)/documents/usuarios/$(userEmail())).data;
+    }
+
+    function isAdmin() {
+      return isAuthorized() && userData().nivel in ['admin', 'master'];
+    }
+
+    function isSafeImage() {
+      return request.resource != null
+        && request.resource.size <= 5 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+
+    function isAnaliseFolder(folder) {
+      return folder.matches('fotos_(alvo|comp_[0-9]+)');
+    }
+
+    match /corretores/{fileName} {
+      allow read: if isAuthorized();
+      allow create, update: if isAdmin() && isSafeImage();
+      allow delete: if isAdmin();
+    }
+
+    match /{folder}/{fileName} {
+      allow read: if isAuthorized() && isAnaliseFolder(folder);
+      allow create, update: if isAuthorized() && isAnaliseFolder(folder) && isSafeImage();
+      allow delete: if isAuthorized() && isAnaliseFolder(folder);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

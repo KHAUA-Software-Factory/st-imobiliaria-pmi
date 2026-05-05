@@ -1,0 +1,126 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function isAuthorized() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/usuarios/$(userEmail()));
+    }
+
+    function userData() {
+      return get(/databases/$(database)/documents/usuarios/$(userEmail())).data;
+    }
+
+    function isAdmin() {
+      return isAuthorized() && userData().nivel in ['admin', 'master'];
+    }
+
+    function isOwnerEmail(email) {
+      return isAuthorized()
+        && email in [userEmail(), userData().emailGmail, userData().emailPDF];
+    }
+
+    function validUsuarioBase(userId) {
+      return request.resource.data.keys().hasAll([
+          'nome',
+          'emailPDF',
+          'emailGmail',
+          'nivel'
+        ])
+        && request.resource.data.emailGmail == userId
+        && request.resource.data.nivel in ['corretor', 'admin', 'master'];
+    }
+
+    function validUsuarioCreate(userId) {
+      return validUsuarioBase(userId)
+        && request.resource.data.keys().hasOnly([
+          'nome',
+          'creci',
+          'emailPDF',
+          'emailGmail',
+          'fotoUrl',
+          'nivel',
+          'ultimaAtualizacao'
+        ]);
+    }
+
+    function validUsuarioUpdate(userId) {
+      return validUsuarioBase(userId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'nome',
+          'creci',
+          'emailPDF',
+          'emailGmail',
+          'fotoUrl',
+          'nivel',
+          'ultimaAtualizacao'
+        ]);
+    }
+
+    function validAnaliseBase() {
+      return request.resource.data.keys().hasAll([
+          'id_corretor',
+          'email_pdf',
+          'dados_alvo',
+          'comparativos',
+          'status'
+        ])
+        && request.resource.data.id_corretor is string
+        && request.resource.data.status == 'concluido';
+    }
+
+    function validAnaliseCreate() {
+      return validAnaliseBase()
+        && request.resource.data.keys().hasOnly([
+          'id_corretor',
+          'email_pdf',
+          'data_criacao',
+          'ultima_atualizacao',
+          'dados_alvo',
+          'comparativos',
+          'status'
+        ]);
+    }
+
+    function validAnaliseUpdate() {
+      return validAnaliseBase()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'id_corretor',
+          'email_pdf',
+          'ultima_atualizacao',
+          'dados_alvo',
+          'comparativos',
+          'status'
+        ]);
+    }
+
+    match /usuarios/{userId} {
+      allow get: if (signedIn() && userId == userEmail()) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isAdmin() && validUsuarioCreate(userId);
+      allow update: if isAdmin() && validUsuarioUpdate(userId);
+      allow delete: if isAdmin() && userId != userEmail();
+    }
+
+    match /analises/{analiseId} {
+      allow get, list: if isAdmin() || isOwnerEmail(resource.data.id_corretor);
+      allow create: if isOwnerEmail(request.resource.data.id_corretor) && validAnaliseCreate();
+      allow update: if validAnaliseUpdate()
+        && request.resource.data.id_corretor == resource.data.id_corretor
+        && (isAdmin() || isOwnerEmail(resource.data.id_corretor));
+      allow delete: if isAdmin() || isOwnerEmail(resource.data.id_corretor);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
