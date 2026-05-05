@@ -29,11 +29,56 @@ Essas chaves identificam o app web Firebase. A segurança dos dados depende das 
 ```bash
 npm ci
 npm run dev
+npm run facebook:generate
 npm run lint
 npm run test:run
 npm run build
 npm audit --omit=dev
 ```
+
+## Feed Facebook Real Estate Ads
+
+O projeto gera um feed XML estático para Meta/Facebook em:
+
+- `https://st.khaua.com.br/facebook`
+- (alias) `https://st.khaua.com.br/facebook/catalogo.xml`
+
+O arquivo é gerado no build em `public/facebook/index.xml` pelo script:
+
+- `scripts/generate-facebook-feed.mjs`
+
+### Variáveis esperadas (ambiente de build)
+
+```env
+FACEBOOK_SOURCE_XML_URL=https://www.stimobiliaria.com.br/integracao/facebook
+FACEBOOK_BASE_PUBLIC_URL=https://st.khaua.com.br
+FACEBOOK_FETCH_TIMEOUT_MS=12000
+FACEBOOK_FETCH_RETRIES=2
+FACEBOOK_GEOCODER_USER_AGENT=st-facebook-feed-bot/1.0 (+https://st.khaua.com.br/facebook)
+```
+
+Para customizar o botão de geração manual no painel admin, você pode definir:
+
+```env
+VITE_FACEBOOK_WORKFLOW_URL=https://github.com/<org>/<repo>/actions/workflows/facebook-feed.yml
+```
+
+### O que o gerador faz
+
+- Busca XML de origem com timeout + retry
+- Faz parse de `<listing>`
+- Converte para o padrão Facebook Real Estate Ads
+- Oculta endereço real (`addr1` recebe bairro)
+- Resolve coordenadas por fallback (origem -> bairro/cidade/estado -> CEP -> centro da cidade)
+- Aplica deslocamento pequeno e determinístico de privacidade
+- Descarta imóveis sem campos obrigatórios
+- Gera logs de descarte em `.cache/facebook-discarded.log`
+
+### Geração automática e manual
+
+- Workflow: `.github/workflows/facebook-feed.yml`
+- Execução automática: diariamente à meia-noite de Brasília (03:00 UTC no cron do GitHub)
+- Execução manual: aba Actions (workflow_dispatch) ou botão `GERAR FEED` no Painel (admin)
 
 ## Firebase
 

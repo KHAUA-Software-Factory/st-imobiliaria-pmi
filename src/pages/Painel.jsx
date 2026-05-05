@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Button, Spinner, Nav } from 'react-bootstrap';
 import {
     PlusCircle, Users, LayoutDashboard,
-    FilePlus, ChevronLeft, ChevronRight, ClipboardList
+    FilePlus, ChevronLeft, ChevronRight, ClipboardList, RefreshCw, ExternalLink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -33,6 +33,8 @@ const Painel = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [analiseSelecionada, setAnaliseSelecionada] = useState(null);
     const [dadosParaEditar, setDadosParaEditar] = useState(null);
+    const workflowUrl = import.meta.env.VITE_FACEBOOK_WORKFLOW_URL || 'https://github.com/KHAUA-Software-Factory/st-imobiliaria-pmi/actions/workflows/facebook-feed.yml';
+    const feedUrl = `${window.location.origin}/facebook`;
 
     useEffect(() => {
         // 1. Se não houver usuário, encerra o loading
@@ -180,10 +182,34 @@ const Painel = () => {
                         <>
                             <div className="d-flex justify-content-between align-items-center mb-5">
                                 <h2 className="fw-bold mb-0 text-primary">Painel de Avaliações</h2>
-                                <Button variant="primary" size="lg" className="fw-bold shadow d-flex align-items-center"
-                                    onClick={() => { setExibirFormulario(true); setDadosParaEditar(null); }}>
-                                    <PlusCircle size={22} className="me-2" /> NOVA ANÁLISE
-                                </Button>
+                                <div className="d-flex align-items-center gap-2">
+                                    {isAdmin && (
+                                        <>
+                                            <Button
+                                                variant="outline-dark"
+                                                size="sm"
+                                                className="fw-bold d-flex align-items-center"
+                                                title="Abre o feed XML em nova aba"
+                                                onClick={() => window.open(feedUrl, '_blank', 'noopener,noreferrer')}
+                                            >
+                                                <ExternalLink size={16} className="me-2" /> VER FEED
+                                            </Button>
+                                            <Button
+                                                variant="outline-primary"
+                                                size="sm"
+                                                className="fw-bold d-flex align-items-center"
+                                                title="Abre o workflow para executar a geração imediatamente"
+                                                onClick={() => window.open(workflowUrl, '_blank', 'noopener,noreferrer')}
+                                            >
+                                                <RefreshCw size={16} className="me-2" /> GERAR FEED
+                                            </Button>
+                                        </>
+                                    )}
+                                    <Button variant="primary" size="lg" className="fw-bold shadow d-flex align-items-center"
+                                        onClick={() => { setExibirFormulario(true); setDadosParaEditar(null); }}>
+                                        <PlusCircle size={22} className="me-2" /> NOVA ANÁLISE
+                                    </Button>
+                                </div>
                             </div>
 
                             {exibirFormulario && (
