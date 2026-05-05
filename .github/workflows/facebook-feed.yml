@@ -45,6 +45,6 @@ jobs:
           host: ${{ secrets.HOST }}
           user: ${{ secrets.USER }}
           password: ${{ secrets.PASS }}
-          localDir: "public/facebook"
-          remoteDir: "public_html/st/facebook"
+          localDir: "public"
+          remoteDir: "public_html/st"
           forceSsl: false

@@ -9,9 +9,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '..');
 const publicDir = path.join(rootDir, 'public');
-const outputDir = path.join(publicDir, 'facebook');
-const outputFile = path.join(outputDir, 'index.xml');
-const outputFileCatalogo = path.join(outputDir, 'catalogo.xml');
+const outputFile = path.join(publicDir, 'facebook.xml');
+const outputFileCatalogo = path.join(publicDir, 'catalogo.xml');
 const cacheDir = path.join(rootDir, '.cache');
 const sourceCacheFile = path.join(cacheDir, 'facebook-source-cache.xml');
 const geocodeCacheFile = path.join(cacheDir, 'facebook-geocode-cache.json');
@@ -332,11 +331,16 @@ function buildListingXml(item) {
     `    <latitude>${item.latitude.toFixed(6)}</latitude>`,
     `    <longitude>${item.longitude.toFixed(6)}</longitude>`,
     imagesXml,
+    item.listing_type ? `    <listing_type>${escapeXml(item.listing_type)}</listing_type>` : '',
+    item.num_baths != null ? `    <num_baths>${escapeXml(item.num_baths)}</num_baths>` : '',
+    item.num_beds != null ? `    <num_beds>${escapeXml(item.num_beds)}</num_beds>` : '',
+    item.num_units != null ? `    <num_units>${escapeXml(item.num_units)}</num_units>` : '',
     `    <price>${escapeXml(item.price)}</price>`,
     `    <property_type>${escapeXml(item.property_type)}</property_type>`,
+    item.year_built != null ? `    <year_built>${escapeXml(item.year_built)}</year_built>` : '',
     `    <url>${escapeXml(item.url)}</url>`,
     '  </listing>',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function toFacebookListing(source) {
@@ -348,7 +352,12 @@ function toFacebookListing(source) {
   const price = normalizePrice(firstNonEmpty(source.price, source.valor, source.sale_price, source.rent_price));
   const url = extractListingUrl(source);
   const availability = normalizeAvailability(source.availability, firstNonEmpty(source.listing_type, source.negocio, source.business_type));
+  const listingType = firstNonEmpty(source.listing_type, source.business_type, source.negocio);
   const propertyType = normalizePropertyType(firstNonEmpty(source.property_type, source.tipo, source.type));
+  const numBaths = Number(firstNonEmpty(source.num_baths, source.banheiros, source.baths));
+  const numBeds = Number(firstNonEmpty(source.num_beds, source.dormitorios, source.beds));
+  const numUnits = Number(firstNonEmpty(source.num_units, source.unidades, source.units));
+  const yearBuilt = Number(firstNonEmpty(source.year_built, source.ano_construcao, source.built_year));
 
   return {
     home_listing_id: homeListingId,
@@ -363,7 +372,12 @@ function toFacebookListing(source) {
       cep: address.cep || '',
     },
     availability,
+    listing_type: listingType || '',
     property_type: propertyType,
+    num_baths: Number.isFinite(numBaths) ? numBaths : null,
+    num_beds: Number.isFinite(numBeds) ? numBeds : null,
+    num_units: Number.isFinite(numUnits) ? numUnits : null,
+    year_built: Number.isFinite(yearBuilt) ? yearBuilt : null,
     images,
     price,
     url,
@@ -382,7 +396,6 @@ function isValidListing(listing) {
 
 async function main() {
   await fs.mkdir(cacheDir, { recursive: true });
-  await fs.mkdir(outputDir, { recursive: true });
 
   if (!SOURCE_XML_URL) {
     const existing = await fs.readFile(outputFile, 'utf8').catch(() => null);
