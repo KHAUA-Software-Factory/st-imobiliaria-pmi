@@ -49,6 +49,12 @@ jobs:
           npm audit --omit=dev
 
       - name: Build
+        env:
+          FACEBOOK_SOURCE_XML_URL: "https://www.stimobiliaria.com.br/integracao/facebook"
+          FACEBOOK_BASE_PUBLIC_URL: "https://st.khaua.com.br"
+          FACEBOOK_FETCH_TIMEOUT_MS: "12000"
+          FACEBOOK_FETCH_RETRIES: "2"
+          FACEBOOK_GEOCODER_USER_AGENT: "st-facebook-feed-bot/1.0 (+https://st.khaua.com.br/facebook)"
         run: |
           npm run build
 
