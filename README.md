@@ -1,16 +1,50 @@
-# React + Vite
+# ST Imobiliária PMI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação React/Vite para criação de Pesquisas de Mercado Imobiliário (PMI), gestão de corretores autorizados e geração de relatórios PDF.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 22
+- npm
+- Projeto Firebase com Auth Google, Firestore e Storage habilitados
 
-## React Compiler
+## Configuração local
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Crie um arquivo `.env` com as variáveis públicas do app Firebase:
 
-## Expanding the ESLint configuration
+```env
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+VITE_FIREBASE_MEASUREMENT_ID=
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Essas chaves identificam o app web Firebase. A segurança dos dados depende das regras em `firestore.rules` e `storage.rules`.
+
+## Scripts
+
+```bash
+npm ci
+npm run dev
+npm run lint
+npm run test:run
+npm run build
+npm audit --omit=dev
+```
+
+## Firebase
+
+As regras versionadas ficam em:
+
+- `firestore.rules`
+- `storage.rules`
+- `firebase.json`
+
+Antes de publicar, confira se os documentos em `usuarios` usam o e-mail Gmail em minúsculas como ID, pois as regras usam esse ID para autorizar corretores, admins e masters.
+
+## Deploy
+
+O workflow `.github/workflows/deploy.yml` roda instalação limpa, lint, testes, auditoria de dependências de produção e build antes do envio por FTP.
