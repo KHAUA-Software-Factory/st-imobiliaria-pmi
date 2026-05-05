@@ -37,8 +37,13 @@
     <image>
       <url>https://img.voaimgs.com.br/1174/imoveis/1390/16150912dd6f53f40b9912e5fe2b2f.jpeg</url>
     </image>
+    <listing_type>for_rent_by_agent</listing_type>
+    <num_baths>0</num_baths>
+    <num_beds>0</num_beds>
+    <num_units>0</num_units>
     <price>215000 BRL</price>
     <property_type>house</property_type>
+    <year_built>0</year_built>
     <url>https://www.stimobiliaria.com.br/imovel/terreno-a-venda-em-itupeva-jardim-japao-1390</url>
   </listing>
 </listings>
